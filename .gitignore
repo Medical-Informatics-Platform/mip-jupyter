@@ -1,0 +1,71 @@
+# Python caches and test artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.codegraph
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Packaging artifacts
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+*.egg
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Local scratch and generated notebook artifacts
+scratch/
+untitled*.chat
+python-client/uv.lock
+workspace/notebooks/
+
+# LLM runtime state
+.llm/chats/*
+!.llm/chats/.gitkeep
+
+# Dev-synced copy of docs/user/ (see mip_jupyter_dev/notebook.py)
+workspace/docs
+workspace/docs/
+
+# Local env and token files
+.env
+.env.*
+.mip_token
+mip_token
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Cursor / local tooling
+.cursor/
+.aider*
+
+# Security scan outputs (ci/)
+*.sarif
+*.sarif.gpg
+semgrep-rules/

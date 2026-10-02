@@ -1,0 +1,1 @@
+# keep .llm/chats/ in git; runtime chat folders are ignored

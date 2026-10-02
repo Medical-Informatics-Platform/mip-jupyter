@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install root package and dev deps
+        run: uv sync --extra dev
+      # The Codex persona refuses to import unless the codex-acp binary is on PATH.
+      - name: Install codex-acp
+        run: npm install -g @zed-industries/codex-acp
+      - name: Python tests
+        run: uv run pytest mip_jupyter_dev python-client/tests -q
+      - name: Smoke script
+        run: uv run python python-client/verify_script.py
+      # Whole tree against the empty tree; a bare `git diff --check` sees nothing on a fresh checkout.
+      - name: Whitespace check
+        run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD
+
+  operator:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: operator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: operator/go.mod
+          cache-dependency-path: operator/go.sum
+      # Regenerates CRDs/RBAC/deepcopy first; a diff means they were not committed.
+      - name: Generated files are up to date
+        run: make manifests generate && git diff --exit-code
+      - name: Controller tests (envtest)
+        run: make test
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      # Layer cache in GitHub Actions: only changed layers rebuild (deps layer until uv.lock changes).
+      - name: Build notebook image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/singleuser/Dockerfile
+          platforms: linux/amd64
+          tags: mip-jupyter:ci
+          load: true
+          cache-from: type=gha,scope=singleuser
+          cache-to: type=gha,scope=singleuser,mode=max
+      - name: Build hub image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/hub/Dockerfile
+          platforms: linux/amd64
+          tags: mip-jupyterhub:ci
+          load: true
+          cache-from: type=gha,scope=hub
+          cache-to: type=gha,scope=hub,mode=max
+      - name: Build notebook operator image
+        uses: docker/build-push-action@v6
+        with:
+          context: operator
+          platforms: linux/amd64
+          tags: mip-notebook-operator:ci
+          cache-from: type=gha,scope=operator
+          cache-to: type=gha,scope=operator,mode=max
+      - name: Hub tests
+        run: >-
+          docker run --rm -w /etc/jupyterhub
+          -v "$PWD/docker/hub/test_notebook_spawner.py:/etc/jupyterhub/test_notebook_spawner.py:ro"
+          -v "$PWD/docker/hub/test_platform_token_service.py:/etc/jupyterhub/test_platform_token_service.py:ro"
+          mip-jupyterhub:ci python -m unittest test_notebook_spawner test_platform_token_service
+      - name: Single-user image smoke
+        run: scripts/smoke-singleuser-image.sh mip-jupyter:ci

@@ -1,0 +1,91 @@
+name: Publish images
+
+on:
+  release:
+    types: [published]
+
+env:
+  HARBOR_REGISTRY: docker-registry.ebrains.eu
+  DOCKER_BUILDKIT: 1
+  DOCKER_CLIENT_TIMEOUT: 300
+  COMPOSE_HTTP_TIMEOUT: 300
+  RETRY_ATTEMPTS: "4"
+  RETRY_SLEEP: "10"
+
+jobs:
+  build_and_push:
+    name: Build ${{ matrix.image }} image and push to registries
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: mip-jupyter
+            context: .
+            dockerfile: docker/singleuser/Dockerfile
+            cache-scope: singleuser
+          - image: mip-jupyterhub
+            context: .
+            dockerfile: docker/hub/Dockerfile
+            cache-scope: hub
+          - image: mip-notebook-operator
+            context: operator
+            dockerfile: operator/Dockerfile
+            cache-scope: operator
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v7.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e #v4.3.0
+
+      - name: Harbor connectivity probe
+        run: |
+          set -x
+          getent hosts ${{ env.HARBOR_REGISTRY }} || true
+          curl -vI --connect-timeout 10 https://${{ env.HARBOR_REGISTRY }}/v2/ || true
+
+      - name: Disable IPv6 (job-scoped)
+        run: |
+          sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
+          sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f #v4.6.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Log in to EBRAINS HARBOR (retry)
+        run: |
+          for i in $(seq 1 ${{ env.RETRY_ATTEMPTS }}); do
+            echo "${{ secrets.HARBOR_PASSWORD }}" | \
+            docker login ${{ env.HARBOR_REGISTRY }} \
+              -u "${{ secrets.HARBOR_USERNAME }}" --password-stdin && exit 0
+            echo "Harbor login attempt $i failed; retrying in ${{ env.RETRY_SLEEP }}s..."
+            sleep ${{ env.RETRY_SLEEP }}
+          done
+          echo "Harbor login failed after ${{ env.RETRY_ATTEMPTS }} attempts" >&2
+          exit 1
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 #v6.2.0
+        with:
+          images: |
+            hbpmip/${{ matrix.image }}
+            ${{ env.HARBOR_REGISTRY }}/medical-informatics-platform/${{ matrix.image }}
+
+      # Shares the GHA layer cache with ci.yml and container-scan.yml.
+      - name: Build ${{ matrix.image }} docker image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a #v7.3.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.cache-scope }}
+          cache-to: type=gha,scope=${{ matrix.cache-scope }},mode=max
