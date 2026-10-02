@@ -275,7 +275,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Jupyter MCP forwarding: {mcp_forwarding}")
         print(f"Jupyter MCP port: {args.mcp_port}")
         print(f"Jupyter MCP URL: {env['JUPYTER_MCP_URL']}")
-        return subprocess.call(command, cwd=root, env=env)
+        # argv list from local CLI args, no shell.
+        return subprocess.call(command, cwd=root, env=env)  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
 
 
 if __name__ == "__main__":

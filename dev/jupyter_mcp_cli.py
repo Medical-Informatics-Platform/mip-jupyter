@@ -12,7 +12,7 @@ from urllib.error import URLError
 from urllib.request import Request
 from urllib.request import urlopen
 
-from mip_jupyter_dev import jupyter_mcp_tools as tools
+from dev import jupyter_mcp_tools as tools
 
 DEFAULT_MCP_URL = "http://127.0.0.1:3001/mcp"
 

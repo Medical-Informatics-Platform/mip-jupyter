@@ -28,8 +28,8 @@ Notebook outputs in `workspace/Welcome.ipynb` should be re-run after API changes
 ```bash
 uv sync --extra dev
 uv run mip-notebook
-npm install -g @zed-industries/codex-acp   # mip_jupyter_dev tests import the Codex persona
-uv run pytest mip_jupyter_dev python-client/tests -q
+npm install -g @zed-industries/codex-acp   # dev tests import the Codex persona
+uv run pytest dev python-client/tests -q
 uv run python python-client/verify_script.py
 ```
 

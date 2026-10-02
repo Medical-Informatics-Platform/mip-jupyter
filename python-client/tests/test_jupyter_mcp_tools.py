@@ -13,7 +13,7 @@ for path in (ROOT, CLIENT):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-from mip_jupyter_dev import jupyter_mcp_tools as tools  # noqa: E402
+from dev import jupyter_mcp_tools as tools  # noqa: E402
 
 
 def run(coro):

@@ -6,4 +6,4 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "${ROOT}"
 
 echo "Running Cohort Scout context eval..."
-uv run python -m mip_jupyter_dev.cohort_scout_eval "$@"
+uv run python -m dev.cohort_scout_eval "$@"

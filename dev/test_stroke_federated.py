@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from mip_jupyter_dev.stroke_federated import (
+from dev.stroke_federated import (
     SSR_AGGREGATE,
     assess_required_variables,
     coverage_from_featurewise,

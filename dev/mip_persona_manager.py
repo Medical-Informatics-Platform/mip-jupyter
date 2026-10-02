@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from jupyter_ai_persona_manager.persona_manager import PersonaManager
 
-MIP_PERSONA_MANAGER_CLASS = "mip_jupyter_dev.mip_persona_manager.MipPersonaManager"
+MIP_PERSONA_MANAGER_CLASS = "dev.mip_persona_manager.MipPersonaManager"
 ALLOWED_PERSONA_ENTRY_POINTS = frozenset({"cohort-scout"})
 
 

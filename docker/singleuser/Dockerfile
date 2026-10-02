@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM python:3.12-slim-bookworm AS build
+FROM python:3.12-slim-trixie AS build
 COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /usr/local/bin/uv
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # --no-editable copies it into the venv. --inexact keeps pip.
 COPY python-client/README.md ./python-client/
 COPY python-client/mip ./python-client/mip
-COPY mip_jupyter_dev ./mip_jupyter_dev
+COPY dev ./dev
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev --no-editable --inexact
 
@@ -37,12 +37,12 @@ ADD --checksum=sha256:70f6126de278bb854f7df50cbd748b58fd01a34a5e58f16976990064bb
 
 FROM codex-acp-${TARGETARCH} AS codex-acp-tgz
 
-FROM python:3.12-slim-bookworm AS codex-acp
+FROM python:3.12-slim-trixie AS codex-acp
 RUN --mount=from=codex-acp-tgz,source=/acp.tgz,target=/tmp/acp.tgz \
     tar -xzf /tmp/acp.tgz -C /tmp package/bin/codex-acp \
     && install -m 755 /tmp/package/bin/codex-acp /usr/local/bin/codex-acp
 
-FROM python:3.12-slim-bookworm
+FROM python:3.12-slim-trixie
 
 ENV PYTHONUNBUFFERED=1 \
     PLATFORM_BACKEND_URL=http://platform-backend:8080/services \
@@ -56,9 +56,14 @@ ENV PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:${PATH}"
 
 # gid 100 (users) matches KubeSpawner fsGroup.
+# System pip/ensurepip are unused (the venv has its own pip) and lag on CVEs.
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends tini \
     && rm -rf /var/lib/apt/lists/* \
+       /usr/local/lib/python3.12/site-packages/pip* \
+       /usr/local/lib/python3.12/ensurepip/_bundled \
+       /usr/local/bin/pip* \
     && useradd -m -u 1000 -g 100 -s /bin/bash jovyan \
     && mkdir -p /home/jovyan/work /etc/profile.d \
     && printf '%s\n' 'export PATH="/opt/venv/bin:$PATH"' > /etc/profile.d/mip-venv.sh \

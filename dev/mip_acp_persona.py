@@ -9,7 +9,7 @@ from jupyter_ai_persona_manager import PersonaDefaults
 from jupyterlab_chat.models import Message
 
 MIP_PERSONA_NAME = "Cohort Scout"
-MIP_PERSONA_ID = "jupyter-ai-personas::mip_jupyter_dev::CohortScoutPersona"
+MIP_PERSONA_ID = "jupyter-ai-personas::dev::CohortScoutPersona"
 MIP_PERSONA_DESCRIPTION = (
     "MIP notebook assistant for cohort discovery and federated analysis, not general chat."
 )

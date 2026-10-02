@@ -51,7 +51,7 @@ PROGRESS_RULES = (
 
 MCP_CLI_RULES = (
     "Shell bridge only: prefix every MCP call with jupyter-mcp "
-    "(or python -m mip_jupyter_dev.jupyter_mcp_cli). "
+    "(or python -m dev.jupyter_mcp_cli). "
     "Never bare read-guide/scratch-*; never native mcp__*; never edit .ipynb via JSON/fs. "
     "Retry reads once; never retry writes without jupyter-mcp scratch-list/notebook-outline."
 )
@@ -320,7 +320,7 @@ def write_codex_acp_wrapper(path: Path, executable: str) -> None:
 def write_jupyter_mcp_cli_wrapper(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     # Use the active interpreter; bare `python` is often missing on Linux hosts.
-    script = f"#!/bin/sh\nexec {shlex.quote(sys.executable)} -m mip_jupyter_dev.jupyter_mcp_cli \"$@\"\n"
+    script = f"#!/bin/sh\nexec {shlex.quote(sys.executable)} -m dev.jupyter_mcp_cli \"$@\"\n"
     path.write_text(script, encoding="utf-8")
     path.chmod(0o755)
 
@@ -334,7 +334,7 @@ def write_shell_guard_wrapper(path: Path) -> None:
         "    case \"$1\" in\n"
         "      -c|-[!-]*c*)\n"
         "        [ -n \"$2\" ] || return 0\n"
-        "        python -m mip_jupyter_dev.shell_guard --validate \"$2\"\n"
+        "        python -m dev.shell_guard --validate \"$2\"\n"
         "        return $?\n"
         "        ;;\n"
         "    esac\n"

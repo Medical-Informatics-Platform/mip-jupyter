@@ -14,7 +14,7 @@ docker/hub/test_*.py
 python-client/tests
 python-client/verify_script.py
 python-client/conftest.py
-mip_jupyter_dev/test_*.py
+dev/test_*.py
 **/*.chat
 
 # Virtualenvs (be explicit — nested client .venv is ~290MB)

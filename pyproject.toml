@@ -5,22 +5,22 @@ description = "Local development runner for mip-jupyter notebooks"
 requires-python = ">=3.10,<3.13"
 dependencies = [
     "mip[notebook]",
-    "jupyterlab>=4.4,<4.6",
+    "jupyterlab>=4.6.4,<4.7",
     "jupyter-ai>=3,<4",
-    "notebook>=7.0.0,<8.0.0",
+    "notebook>=7.6.3,<8.0.0",
     "ipykernel>=6.0.0,<8.0.0",
     "nbconvert>=7.0.0,<8.0.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0.0,<9.0.0", "pytest-asyncio>=0.24.0,<1.0.0"]
+dev = ["pytest>=9.0.3,<10.0.0", "pytest-asyncio>=1.2.0,<2.0.0"]
 
 [project.scripts]
-mip-notebook = "mip_jupyter_dev.notebook:main"
-mip-jupyter-mcp = "mip_jupyter_dev.jupyter_mcp_cli:main"
+mip-notebook = "dev.notebook:main"
+mip-jupyter-mcp = "dev.jupyter_mcp_cli:main"
 
 [project.entry-points."jupyter_ai.personas"]
-cohort-scout = "mip_jupyter_dev.mip_acp_persona:CohortScoutPersona"
+cohort-scout = "dev.mip_acp_persona:CohortScoutPersona"
 
 [tool.uv.sources]
 mip = { path = "python-client", editable = true }
@@ -30,4 +30,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["mip_jupyter_dev"]
+packages = ["dev"]

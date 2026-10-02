@@ -35,11 +35,11 @@ docker exec "${CONTAINER}" sh -lc '
   grep -q "# %%" /home/jovyan/work/examples/algorithm_examples.py
 '
 
-docker exec "${CONTAINER}" python -m mip_jupyter_dev.jupyter_mcp_cli \
+docker exec "${CONTAINER}" python -m dev.jupyter_mcp_cli \
   --mcp-url http://127.0.0.1:3001/mcp \
   read-guide --page recipes/stroke-analysis --max-chars 500 >/dev/null
 
-docker exec "${CONTAINER}" python -m mip_jupyter_dev.jupyter_mcp_cli \
+docker exec "${CONTAINER}" python -m dev.jupyter_mcp_cli \
   --mcp-url http://127.0.0.1:3001/mcp \
   notebook-outline workspace/examples/feres_analysis.ipynb >/dev/null
 

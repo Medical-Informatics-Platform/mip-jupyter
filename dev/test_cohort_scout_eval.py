@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from mip_jupyter_dev.cohort_scout_eval import EVAL_CASES
-from mip_jupyter_dev.cohort_scout_eval import expected_first_guide
-from mip_jupyter_dev.cohort_scout_eval import measure_base_instructions
-from mip_jupyter_dev.cohort_scout_eval import run_offline_eval
-from mip_jupyter_dev.codex_bootstrap import BASE_INSTRUCTIONS_MAX_CHARS
-from mip_jupyter_dev.codex_bootstrap import build_base_instructions
+from dev.cohort_scout_eval import EVAL_CASES
+from dev.cohort_scout_eval import expected_first_guide
+from dev.cohort_scout_eval import measure_base_instructions
+from dev.cohort_scout_eval import run_offline_eval
+from dev.codex_bootstrap import BASE_INSTRUCTIONS_MAX_CHARS
+from dev.codex_bootstrap import build_base_instructions
 
 
 def test_eval_cases_cover_five_production_prompts() -> None:

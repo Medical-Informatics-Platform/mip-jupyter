@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+# subprocess calls below run the test-generated wrapper with argv lists, no shell.
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from mip_jupyter_dev.codex_bootstrap import write_shell_guard_wrapper
-from mip_jupyter_dev.shell_guard import validate_shell_command
+from dev.codex_bootstrap import write_shell_guard_wrapper
+from dev.shell_guard import validate_shell_command
 
 
 def test_rejects_heredoc() -> None:
@@ -35,7 +36,7 @@ def test_allows_scratch_script_run() -> None:
 def test_allows_jupyter_mcp_cli() -> None:
     assert (
         validate_shell_command(
-            "python -m mip_jupyter_dev.jupyter_mcp_cli scratch-copy-template scratch/foo.py"
+            "python -m dev.jupyter_mcp_cli scratch-copy-template scratch/foo.py"
         )
         is None
     )
@@ -44,7 +45,7 @@ def test_allows_jupyter_mcp_cli() -> None:
 def test_shell_guard_wrapper_rejects_lc_notebook_cat(tmp_path: Path) -> None:
     wrapper = tmp_path / "mip-shell-guard"
     write_shell_guard_wrapper(wrapper)
-    result = subprocess.run(
+    result = subprocess.run(  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
         [str(wrapper), "-lc", "cat workspace/examples/feres_analysis.ipynb"],
         capture_output=True,
         text=True,
@@ -56,7 +57,7 @@ def test_shell_guard_wrapper_rejects_lc_notebook_cat(tmp_path: Path) -> None:
 def test_shell_guard_wrapper_rejects_login_c_notebook_cat(tmp_path: Path) -> None:
     wrapper = tmp_path / "mip-shell-guard"
     write_shell_guard_wrapper(wrapper)
-    result = subprocess.run(
+    result = subprocess.run(  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
         [str(wrapper), "--login", "-c", "cat workspace/examples/feres_analysis.ipynb"],
         capture_output=True,
         text=True,
@@ -68,7 +69,7 @@ def test_shell_guard_wrapper_rejects_login_c_notebook_cat(tmp_path: Path) -> Non
 def test_shell_guard_wrapper_allows_lc_allowed_command(tmp_path: Path) -> None:
     wrapper = tmp_path / "mip-shell-guard"
     write_shell_guard_wrapper(wrapper)
-    result = subprocess.run(
+    result = subprocess.run(  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
         [str(wrapper), "-lc", "echo ok"],
         capture_output=True,
         text=True,
@@ -80,7 +81,7 @@ def test_shell_guard_wrapper_allows_lc_allowed_command(tmp_path: Path) -> None:
 def test_shell_guard_wrapper_preserves_long_options_before_c(tmp_path: Path) -> None:
     wrapper = tmp_path / "mip-shell-guard"
     write_shell_guard_wrapper(wrapper)
-    result = subprocess.run(
+    result = subprocess.run(  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
         [str(wrapper), "--norc", "-c", "echo ok"],
         capture_output=True,
         text=True,
