@@ -1,6 +1,26 @@
-# No active suppressions.
-# CVE-2026-54515 (GHSA-5jmj-h7xm-6q6v) was suppressed while the fixed Jackson
-# release did not exist; it is fixed upstream and pom.xml now pins Jackson
-# 2.22.2 / 3.2.2, so the suppression is gone. Add entries here only with a CVE
-# id, a reason, and a removal condition.
-vulnerabilities: []
+# Add entries here only with a CVE id, a reason, and a removal condition.
+vulnerabilities:
+  # pip 26.2.1 (latest) vendors these copies under pip/_vendor. Trivy reports
+  # them with no file path, so scope by the exact vendored purl; the venv's own
+  # setuptools/urllib3/msgpack are newer and stay scanned. Remove once a pip
+  # release re-vendors fixed versions.
+  - id: CVE-2025-47273
+    purls:
+      - "pkg:pypi/setuptools@70.3.0"
+    statement: "pip-vendored pkg_resources only; setuptools.package_index (the vulnerable module) is not vendored by pip."
+    expires: 2026-12-31
+  - id: CVE-2026-97687
+    purls:
+      - "pkg:pypi/urllib3@2.7.0"
+    statement: "pip-vendored urllib3, used only by pip itself; no fixed pip release yet."
+    expires: 2026-12-31
+  - id: CVE-2026-97689
+    purls:
+      - "pkg:pypi/urllib3@2.7.0"
+    statement: "pip-vendored urllib3, used only by pip itself; no fixed pip release yet."
+    expires: 2026-12-31
+  - id: GHSA-6v7p-g79w-8964
+    purls:
+      - "pkg:pypi/msgpack@1.1.2"
+    statement: "pip-vendored msgpack (cache serialization), used only by pip itself; no fixed pip release yet."
+    expires: 2026-12-31

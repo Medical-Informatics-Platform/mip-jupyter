@@ -1,8 +1,8 @@
-import json
 import subprocess
 import os
 import sys
 import logging
+from parse_sarif import drop_suppressed
 
 GREEN = '\033[92m'
 RED = '\033[91m'
@@ -27,18 +27,6 @@ OPENGREP_EXCLUDE = os.getenv(
     "*.sarif ci/ Dockerfile* .pre-commit-config.yaml docs/** README.md AGENTS.md"
 ).split()
 OPENGREP_SARIF_OUTPUT = os.getenv("OPENGREP_SARIF_OUTPUT", "sast-opengrep-app.sarif")
-
-def drop_suppressed(path):
-    # opengrep keeps `# nosemgrep` findings in SARIF (suppressions: inSource),
-    # and the GitHub Security tab still opens alerts for them.
-    if not os.path.exists(path):
-        return
-    with open(path) as f:
-        sarif = json.load(f)
-    for run in sarif.get("runs", []):
-        run["results"] = [r for r in run.get("results", []) if not r.get("suppressions")]
-    with open(path, "w") as f:
-        json.dump(sarif, f)
 
 def run_opengrep():
     base_cmd = ["opengrep", "scan"] + \
