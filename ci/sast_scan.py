@@ -2,6 +2,7 @@ import subprocess
 import os
 import sys
 import logging
+from parse_sarif import drop_suppressed
 
 GREEN = '\033[92m'
 RED = '\033[91m'
@@ -36,6 +37,7 @@ def run_opengrep():
     report_cmd = " ".join(report_cmd).split()
     logger.info(f"{BOLD}Running (report):{RESET} {' '.join(report_cmd)}")
     subprocess.run(report_cmd)
+    drop_suppressed(OPENGREP_SARIF_OUTPUT)
 
     gate_cmd = (base_cmd + ["--severity=ERROR", "--error"])
     gate_cmd = " ".join(gate_cmd).split()

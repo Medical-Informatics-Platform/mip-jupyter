@@ -27,12 +27,12 @@ export JUPYTER_MCP_URL="http://127.0.0.1:${MCP_PORT}/mcp"
 
 if [ -n "${CODEX_VLLM_BASE_URL:-}" ]; then
   rm -rf "${CODEX_HOME}"
-  python -m mip_jupyter_dev.codex_bootstrap "${CODEX_HOME}" "${JUPYTER_AI_CONFIG}" --mcp-port "${MCP_PORT}"
+  python -m dev.codex_bootstrap "${CODEX_HOME}" "${JUPYTER_AI_CONFIG}" --mcp-port "${MCP_PORT}"
   export CODEX_HOME
   export PATH="${CODEX_HOME}/bin:${PATH}"
   export SHELL="${CODEX_HOME}/bin/mip-shell-guard"
 else
-  python -m mip_jupyter_dev.jupyter_mcp_config "${JUPYTER_AI_CONFIG}" --mcp-port "${MCP_PORT}"
+  python -m dev.jupyter_mcp_config "${JUPYTER_AI_CONFIG}" --mcp-port "${MCP_PORT}"
 fi
 
 default_notebook="${MIP_NOTEBOOK:-Welcome.ipynb}"

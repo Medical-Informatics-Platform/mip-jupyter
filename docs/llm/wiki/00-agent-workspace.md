@@ -56,7 +56,7 @@ index; run only when asked or validating; summarize outputs (no large pastes).
 
 ## Tooling
 
-Use `jupyter-mcp` or `python -m mip_jupyter_dev.jupyter_mcp_cli` for notebook,
+Use `jupyter-mcp` or `python -m dev.jupyter_mcp_cli` for notebook,
 wiki, docs, and MIP metadata. In vLLM shell-bridge mode, native `mcp__*` tools
 are disabled; `JUPYTER_MCP_URL` is set by JupyterLab.
 

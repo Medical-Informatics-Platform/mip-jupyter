@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 from traitlets.utils.importstring import import_item
 
-from mip_jupyter_dev import notebook as notebook_runner
-from mip_jupyter_dev.codex_bootstrap import (
+from dev import notebook as notebook_runner
+from dev.codex_bootstrap import (
     AGENT_MODEL_DISPLAY_NAME,
     BASE_INSTRUCTIONS_MAX_CHARS,
     DEFAULT_CODEX_MODEL,
@@ -28,20 +28,20 @@ from mip_jupyter_dev.codex_bootstrap import (
     write_codex_config,
     write_codex_model_catalog,
 )
-from mip_jupyter_dev.mip_acp_persona import MIP_PERSONA_ID
-from mip_jupyter_dev.mip_acp_persona import MIP_PERSONA_NAME
-from mip_jupyter_dev.mip_acp_persona import TOOL_CALL_PARSE_ERROR_MESSAGE
-from mip_jupyter_dev.mip_acp_persona import VLLM_UNAVAILABLE_MESSAGE
-from mip_jupyter_dev.mip_acp_persona import CohortScoutPersona
-from mip_jupyter_dev.mip_acp_persona import is_tool_call_parse_error
-from mip_jupyter_dev.mip_acp_persona import is_vllm_unavailable_error
-from mip_jupyter_dev.mip_persona_manager import (
+from dev.mip_acp_persona import MIP_PERSONA_ID
+from dev.mip_acp_persona import MIP_PERSONA_NAME
+from dev.mip_acp_persona import TOOL_CALL_PARSE_ERROR_MESSAGE
+from dev.mip_acp_persona import VLLM_UNAVAILABLE_MESSAGE
+from dev.mip_acp_persona import CohortScoutPersona
+from dev.mip_acp_persona import is_tool_call_parse_error
+from dev.mip_acp_persona import is_vllm_unavailable_error
+from dev.mip_persona_manager import (
     ALLOWED_PERSONA_ENTRY_POINTS,
     MIP_PERSONA_MANAGER_CLASS,
     MipPersonaManager,
 )
-from mip_jupyter_dev.jupyter_mcp_config import build_config as build_mcp_config
-from mip_jupyter_dev import jupyter_mcp_cli
+from dev.jupyter_mcp_config import build_config as build_mcp_config
+from dev import jupyter_mcp_cli
 
 
 @pytest.fixture(autouse=True)

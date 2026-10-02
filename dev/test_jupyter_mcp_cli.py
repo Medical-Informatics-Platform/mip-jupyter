@@ -8,7 +8,7 @@ import os
 import pytest
 from unittest.mock import patch
 
-from mip_jupyter_dev import jupyter_mcp_cli
+from dev import jupyter_mcp_cli
 
 
 def test_read_guide_stroke_recipe_page_routes_to_agent_read_guide() -> None:

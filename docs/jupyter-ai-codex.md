@@ -89,8 +89,8 @@ payloads with `Object of type Undefined is not JSON serializable`.
 Instead, Codex receives `JUPYTER_MCP_URL` and model instructions to call the MCP server through the shell bridge:
 
 ```bash
-python -m mip_jupyter_dev.jupyter_mcp_cli create-notebook scratch/mcp_probe.ipynb
-python -m mip_jupyter_dev.jupyter_mcp_cli append-markdown scratch/mcp_probe.ipynb "MCP OK"
+python -m dev.jupyter_mcp_cli create-notebook scratch/mcp_probe.ipynb
+python -m dev.jupyter_mcp_cli append-markdown scratch/mcp_probe.ipynb "MCP OK"
 ```
 
 The bridge still calls the Jupyter MCP server; it just avoids sending a native
@@ -122,14 +122,14 @@ CODEX_MODEL_CONTEXT_WINDOW=131072 CODEX_AUTO_COMPACT_TOKEN_LIMIT=40000 \
   ./run-local-llm-codex.sh
 ```
 
-`python -m mip_jupyter_dev.codex_bootstrap` (the container and Hub path) reads the
+`python -m dev.codex_bootstrap` (the container and Hub path) reads the
 same variables; Hub spawners forward them from the deployment repo. Any served id
 is accepted, and one we do not ship defaults to the budgets above.
 
 If the shell bridge regresses, native MCP forwarding should remain disabled for this endpoint. Verify the MCP server directly with:
 
 ```bash
-python -m mip_jupyter_dev.jupyter_mcp_cli notebook-outline workspace/examples/feres_analysis.ipynb
+python -m dev.jupyter_mcp_cli notebook-outline workspace/examples/feres_analysis.ipynb
 ```
 
 For parallel local JupyterLab instances, use a different JupyterLab port. The runner chooses a free MCP port automatically unless `JUPYTER_MCP_PORT` or `--mcp-port` is set:

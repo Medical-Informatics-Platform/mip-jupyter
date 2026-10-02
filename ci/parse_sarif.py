@@ -5,6 +5,18 @@ from dataclasses import dataclass
 GATE_FAIL_THRESHOLD = float(os.getenv("GATE_FAIL_THRESHOLD", "8.0"))
 GATE_WARN_THRESHOLD = float(os.getenv("GATE_WARN_THRESHOLD", "5.0"))
 
+def drop_suppressed(path):
+    # opengrep keeps `# nosemgrep` findings in SARIF (suppressions: inSource),
+    # and the GitHub Security tab still opens alerts for them.
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        sarif = json.load(f)
+    for run in sarif.get("runs", []):
+        run["results"] = [r for r in run.get("results", []) if not r.get("suppressions")]
+    with open(path, "w") as f:
+        json.dump(sarif, f)
+
 @dataclass
 class EvaluationResult:
     gate_failed: bool

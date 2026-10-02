@@ -20,7 +20,7 @@ jobs:
       - name: Install codex-acp
         run: npm install -g @zed-industries/codex-acp
       - name: Python tests
-        run: uv run pytest mip_jupyter_dev python-client/tests -q
+        run: uv run pytest dev python-client/tests -q
       - name: Smoke script
         run: uv run python python-client/verify_script.py
       # Whole tree against the empty tree; a bare `git diff --check` sees nothing on a fresh checkout.

@@ -20,15 +20,15 @@ curl -fsS "${BASE_URL}/responses" \
 echo "Running shell guard, persona, and context-eval regression tests..."
 cd "${ROOT}"
 uv run pytest \
-  mip_jupyter_dev/test_shell_guard.py \
-  mip_jupyter_dev/test_codex_bootstrap.py \
-  mip_jupyter_dev/test_cohort_scout_eval.py \
-  mip_jupyter_dev/test_stroke_federated.py \
+  dev/test_shell_guard.py \
+  dev/test_codex_bootstrap.py \
+  dev/test_cohort_scout_eval.py \
+  dev/test_stroke_federated.py \
   -q \
   -k "shell or tool_call_parse or vllm_unavailable or select_primary or coverage or format_logistic or parse_logistic or eval or base_instructions or offline_eval or catalog_defaults or from_env_default"
 
 echo "Running offline context budget eval..."
-uv run python -m mip_jupyter_dev.cohort_scout_eval
+uv run python -m dev.cohort_scout_eval
 
 echo "Acceptance gate passed."
 echo "Manual UI check (optional): in JupyterLab chat, send:"

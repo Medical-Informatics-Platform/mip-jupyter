@@ -83,11 +83,11 @@ Install the development environment (includes the `mip` client from
 uv sync --extra dev
 ```
 
-Run the Python checks (the `mip_jupyter_dev` tests need `codex-acp` on `PATH`:
+Run the Python checks (the `dev` tests need `codex-acp` on `PATH`:
 `npm install -g @zed-industries/codex-acp`):
 
 ```bash
-uv run pytest mip_jupyter_dev python-client/tests -q
+uv run pytest dev python-client/tests -q
 uv run python python-client/verify_script.py
 ```
 
@@ -122,7 +122,7 @@ JupyterHub deployments may also inject `JUPYTERHUB_API_URL` and
 | `docs/user/` | Canonical user documentation copied into the workspace |
 | `python-client/` | `mip` package source and tests |
 | `docker/` | Single-user and JupyterHub image definitions |
-| `mip_jupyter_dev/` | Local JupyterLab runner and development utilities |
+| `dev/` | Local JupyterLab runner and development utilities |
 | `docs/architecture.md` | Runtime and packaging architecture |
 | `docs/operators.md` | Integration notes for platform operators |
 | `docs/repository-layout.md` | Detailed repository layout |

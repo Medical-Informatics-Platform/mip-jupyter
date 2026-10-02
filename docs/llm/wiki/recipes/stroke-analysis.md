@@ -27,7 +27,7 @@ Patterns: `examples/feres_analysis.ipynb`, `examples/algorithm_examples.py`.
 - Parenthesize filters: `(F(nihss) >= 10) & (F(nihss) < 20)`
 - `dm.variables["Age"]` + `F(age_var)` — never `F("Age")` / `pipeline.get_variable()`
 - `AnalysisSet` + `Pipeline(analysis_set=...)`; `MissingValuesHandler(strategies={...})`
-- Parse logistic with `parse_logistic_regression_summary()` / `format_logistic_term()` from `mip_jupyter_dev.stroke_federated`
+- Parse logistic with `parse_logistic_regression_summary()` / `format_logistic_term()` from `dev.stroke_federated`
 - Dataset: `datasets=[ssr]` only — never mix SSR with SSR-even/odd
 - Often empty in SSR (exclude primary): `"Known AF"`, `"Oral anticoagulation"`,
   `"Prestroke sleep hours"`

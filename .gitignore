@@ -40,7 +40,7 @@ workspace/notebooks/
 .llm/chats/*
 !.llm/chats/.gitkeep
 
-# Dev-synced copy of docs/user/ (see mip_jupyter_dev/notebook.py)
+# Dev-synced copy of docs/user/ (see dev/notebook.py)
 workspace/docs
 workspace/docs/
 

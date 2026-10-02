@@ -20,7 +20,7 @@ Notebooks never call Exaflow directly.
 | `docs/llm/` | AI agents | Task-scoped agent wiki (`AGENTS.md` bootstrap) |
 | `python-client/` | Developers | `mip` package source and tests |
 | `docker/` | Operators | Single-user and Hub image definitions |
-| `mip_jupyter_dev/` | Local developers | JupyterLab runner with Codex/MCP |
+| `dev/` | Local developers | JupyterLab runner with Codex/MCP |
 | `docs/` (root) | Operators, developers | Architecture, release process, operators guide |
 
 Deployment orchestration (Compose, Kubernetes, Keycloak wiring) lives in **`mip/deployment`**.

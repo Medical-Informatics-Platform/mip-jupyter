@@ -41,7 +41,7 @@ mip-jupyter/
     release-process.md
     operators.md
 
-  mip_jupyter_dev/          # Local dev runner (not in production workspace)
+  dev/          # Local dev runner (not in production workspace)
   expected_library.md       # API contract for client development
 ```
 
@@ -60,7 +60,7 @@ mip-jupyter/
 - `python-client/` source tree
 - Dockerfiles and Hub configuration
 - `docs/llm/` agent wiki (`/opt/mip-agent-docs/`)
-- `mip_jupyter_dev/` tooling
+- `dev/` tooling
 - Repository CI files
 
 ## Deployment
