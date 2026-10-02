@@ -1,3 +1,4 @@
+import json
 import subprocess
 import os
 import sys
@@ -27,6 +28,18 @@ OPENGREP_EXCLUDE = os.getenv(
 ).split()
 OPENGREP_SARIF_OUTPUT = os.getenv("OPENGREP_SARIF_OUTPUT", "sast-opengrep-app.sarif")
 
+def drop_suppressed(path):
+    # opengrep keeps `# nosemgrep` findings in SARIF (suppressions: inSource),
+    # and the GitHub Security tab still opens alerts for them.
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        sarif = json.load(f)
+    for run in sarif.get("runs", []):
+        run["results"] = [r for r in run.get("results", []) if not r.get("suppressions")]
+    with open(path, "w") as f:
+        json.dump(sarif, f)
+
 def run_opengrep():
     base_cmd = ["opengrep", "scan"] + \
         [f"--config {config}" for config in SEMGREP_CONFIG_RULESETS] + \
@@ -36,6 +49,7 @@ def run_opengrep():
     report_cmd = " ".join(report_cmd).split()
     logger.info(f"{BOLD}Running (report):{RESET} {' '.join(report_cmd)}")
     subprocess.run(report_cmd)
+    drop_suppressed(OPENGREP_SARIF_OUTPUT)
 
     gate_cmd = (base_cmd + ["--severity=ERROR", "--error"])
     gate_cmd = " ".join(gate_cmd).split()
