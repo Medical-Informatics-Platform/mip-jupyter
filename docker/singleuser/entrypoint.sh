@@ -37,9 +37,10 @@ fi
 
 default_notebook="${MIP_NOTEBOOK:-Welcome.ipynb}"
 
-hub_args=""
+# Optional hub flag goes in "$@" so it stays one quoted word (or none).
+set --
 if [ -n "${JUPYTERHUB_SERVICE_PREFIX:-}" ]; then
-  hub_args="--ServerApp.base_url=${JUPYTERHUB_SERVICE_PREFIX}"
+  set -- "--ServerApp.base_url=${JUPYTERHUB_SERVICE_PREFIX}"
   default_url="lab/tree/${default_notebook}"
 else
   default_url="/lab/tree/${default_notebook}"
@@ -52,7 +53,7 @@ exec jupyter lab \
   --ServerApp.token="${JUPYTER_TOKEN:-}" \
   --ServerApp.root_dir="${WORK}" \
   --ServerApp.default_url="${default_url}" \
-  ${hub_args} \
+  "$@" \
   --YDocExtension.disable_rtc=True \
   --ServerApp.websocket_ping_interval=30000 \
   --ServerApp.websocket_ping_timeout=30000 \
