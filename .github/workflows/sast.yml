@@ -18,7 +18,7 @@ jobs:
         semgrep-rules/generic semgrep-rules/problem-based-packs semgrep-rules/bash semgrep-rules/python semgrep-rules/go auto
         semgrep-rules/yaml semgrep-rules/package_managers p/default
       OPENGREP_EXCLUDE: >-
-        *.sarif ci/ Dockerfile* docs/** README.md AGENTS.md expected_library.md *.ipynb
+        *.sarif ci/ Dockerfile* docs/** README.md AGENTS.md expected_library.md *.ipynb uv.lock
       OPENGREP_SARIF_OUTPUT: sast-semgrep-app.sarif
 
     steps:

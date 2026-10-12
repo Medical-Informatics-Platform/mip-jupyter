@@ -6,6 +6,10 @@ on:
     tags:
       - "*"
 
+# The mirror pushes with its own GitLab token; GITHUB_TOKEN only reads.
+permissions:
+  contents: read
+
 jobs:
   to_ebrains:
     runs-on: ubuntu-latest
