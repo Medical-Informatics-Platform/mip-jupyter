@@ -13,10 +13,10 @@ WORKDIR /opt/mip-build
 COPY pyproject.toml uv.lock ./
 COPY python-client/pyproject.toml ./python-client/
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --no-install-project --no-install-package mip \
+    uv sync --locked --no-dev --no-install-project --no-install-package mip-client \
     && uv pip install --python /opt/venv/bin/python pip==26.2.1
 
-# Our packages: seconds to rebuild. uv.sources marks mip editable for local dev;
+# Our packages: seconds to rebuild. uv.sources marks mip-client editable for local dev;
 # --no-editable copies it into the venv. --inexact keeps pip.
 COPY python-client/README.md ./python-client/
 COPY python-client/mip ./python-client/mip

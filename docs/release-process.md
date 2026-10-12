@@ -2,7 +2,7 @@
 
 ## Versioning
 
-- `python-client/` (`mip` package) carries the client library version in `pyproject.toml`.
+- `python-client/` (`mip-client` package, import `mip`) carries its own version in `pyproject.toml` and is released with `client-v*` tags (see `python-client/README.md`). Image releases ignore those tags.
 - Container images are tagged separately (for example `hbpmip/mip-jupyter:dev`).
 
 ## Build checklist

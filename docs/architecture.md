@@ -18,7 +18,7 @@ Notebooks never call Exaflow directly.
 | `workspace/` | Production Jupyter users | `Welcome.ipynb`, examples, scratch (seeded into `/home/jovyan/work`) |
 | `docs/user/` | Production Jupyter users | User docs (copied to workspace `docs/` at image build) |
 | `docs/llm/` | AI agents | Task-scoped agent wiki (`AGENTS.md` bootstrap) |
-| `python-client/` | Developers | `mip` package source and tests |
+| `python-client/` | Developers | `mip-client` package (import `mip`), source and tests |
 | `docker/` | Operators | Single-user and Hub image definitions |
 | `dev/` | Local developers | JupyterLab runner with Codex/MCP |
 | `docs/` (root) | Operators, developers | Architecture, release process, operators guide |

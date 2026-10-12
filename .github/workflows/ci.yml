@@ -27,6 +27,25 @@ jobs:
       - name: Whitespace check
         run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD
 
+  # The client alone, without the notebook workspace: proves python-client/ stays self-contained.
+  client:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    defaults:
+      run:
+        working-directory: python-client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: uv sync --extra dev --extra notebook
+      - run: uv run pytest -q
+      - run: uv run python verify_script.py
+      - run: uv build
+
   operator:
     runs-on: ubuntu-latest
     defaults:

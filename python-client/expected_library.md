@@ -1,6 +1,6 @@
-# MIP Jupyter Expected Library
+# mip-client API contract
 
-Contract for the notebook-side `mip` library built in `mip-jupyter` and consumed inside Jupyter/JupyterHub.
+Contract for the `mip` library (distribution `mip-client`), used from Jupyter notebooks, including the hosted mip-jupyter images.
 
 ## Design Rules
 

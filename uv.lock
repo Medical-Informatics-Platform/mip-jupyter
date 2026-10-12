@@ -1822,7 +1822,7 @@ wheels = [
 ]
 
 [[package]]
-name = "mip"
+name = "mip-client"
 version = "0.1.0"
 source = { editable = "python-client" }
 dependencies = [
@@ -1849,6 +1849,7 @@ notebook = [
 requires-dist = [
     { name = "ipython", marker = "extra == 'notebook'", specifier = ">=8.0.0,<10.0.0" },
     { name = "ipywidgets", marker = "extra == 'notebook'", specifier = ">=8.0.0,<9.0.0" },
+    { name = "jinja2", marker = "extra == 'dev'", specifier = ">=3.0.0,<4.0.0" },
     { name = "matplotlib", marker = "extra == 'notebook'", specifier = ">=3.7.0,<4.0.0" },
     { name = "numpy", specifier = ">=1.21.0,<3.0.0" },
     { name = "pandas", specifier = ">=1.0.0,<4.0.0" },
@@ -1867,7 +1868,7 @@ dependencies = [
     { name = "ipykernel" },
     { name = "jupyter-ai" },
     { name = "jupyterlab" },
-    { name = "mip", extra = ["notebook"] },
+    { name = "mip-client", extra = ["notebook"] },
     { name = "nbconvert" },
     { name = "notebook" },
 ]
@@ -1883,7 +1884,7 @@ requires-dist = [
     { name = "ipykernel", specifier = ">=6.0.0,<8.0.0" },
     { name = "jupyter-ai", specifier = ">=3,<4" },
     { name = "jupyterlab", specifier = ">=4.6.4,<4.7" },
-    { name = "mip", extras = ["notebook"], editable = "python-client" },
+    { name = "mip-client", extras = ["notebook"], editable = "python-client" },
     { name = "nbconvert", specifier = ">=7.0.0,<8.0.0" },
     { name = "notebook", specifier = ">=7.6.3,<8.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.3,<10.0.0" },

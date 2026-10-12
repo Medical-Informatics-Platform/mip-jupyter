@@ -13,9 +13,10 @@ mip-jupyter/
       Dockerfile            # JupyterHub image
       jupyterhub_config.py
 
-  python-client/
+  python-client/            # mip-client package (import `mip`), self-contained
     mip/                    # Installed as package in production images
     tests/
+    expected_library.md     # API contract for client development
     pyproject.toml
 
   workspace/                # Notebooks seeded into /home/jovyan/work
@@ -42,7 +43,6 @@ mip-jupyter/
     operators.md
 
   dev/          # Local dev runner (not in production workspace)
-  expected_library.md       # API contract for client development
 ```
 
 ## What production users see

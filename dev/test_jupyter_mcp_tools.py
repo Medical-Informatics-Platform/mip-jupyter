@@ -1,19 +1,12 @@
 import asyncio
 import json
 import os
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-ROOT = Path(__file__).resolve().parents[2]
-CLIENT = ROOT / "python-client"
-for path in (ROOT, CLIENT):
-    if str(path) not in sys.path:
-        sys.path.insert(0, str(path))
-
-from dev import jupyter_mcp_tools as tools  # noqa: E402
+from dev import jupyter_mcp_tools as tools
 
 
 def run(coro):
@@ -347,7 +340,7 @@ class TestJupyterMcpTools(unittest.TestCase):
     def test_stroke_recipe_allowlist_includes_coverage_guidance(self):
         tmp, workspace = self._workspace()
         self.addCleanup(tmp.cleanup)
-        repo = Path(__file__).resolve().parents[2]
+        repo = Path(__file__).resolve().parents[1]
         with patch.dict(os.environ, {"MIP_JUPYTER_ROOT": str(workspace), "MIP_AGENT_DOCS": str(repo)}):
             guide = run(tools.agent_read_guide(page="recipes/stroke-analysis", max_chars=8000))
 
@@ -362,7 +355,7 @@ class TestJupyterMcpTools(unittest.TestCase):
     def test_scratch_copy_template_and_to_notebook(self):
         tmp, workspace = self._workspace()
         self.addCleanup(tmp.cleanup)
-        repo = Path(__file__).resolve().parents[2]
+        repo = Path(__file__).resolve().parents[1]
         examples = repo / "workspace" / "examples" / "algorithm_examples.py"
         example_dir = workspace / "examples"
         example_dir.mkdir(parents=True, exist_ok=True)
@@ -497,7 +490,7 @@ class TestJupyterMcpTools(unittest.TestCase):
     def test_scratch_to_notebook_deduplicates_repeat_transfer(self):
         tmp, workspace = self._workspace()
         self.addCleanup(tmp.cleanup)
-        repo = Path(__file__).resolve().parents[2]
+        repo = Path(__file__).resolve().parents[1]
         examples = repo / "workspace" / "examples" / "algorithm_examples.py"
         example_dir = workspace / "examples"
         example_dir.mkdir(parents=True, exist_ok=True)

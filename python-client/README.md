@@ -1,21 +1,31 @@
-# MIP Python client
+# mip-client
 
-Notebook-facing library for MIP federated analysis via platform-backend experiments.
+Python client for MIP federated analysis via platform-backend experiments.
+The distribution is `mip-client`; the import name is `mip`.
+
+This directory is a self-contained package: it never imports or reads files
+from the rest of mip-jupyter, so it can be released (and later moved) on its
+own. Tests that check the notebook workspace live in `dev/`.
 
 ## Install
 
-From the repository root, `uv sync --extra dev` installs this client editable.
-Standalone:
-
 ```bash
-python3 -m pip install -e .
+python3 -m pip install "mip-client[notebook] @ git+https://github.com/Medical-Informatics-Platform/mip-jupyter@client-v0.1.0#subdirectory=python-client"
 ```
 
-Optional notebook extras:
+Drop `[notebook]` outside Jupyter.
+
+For development, `uv sync --extra dev` at the repository root installs this
+client editable. To work on the client alone, from this directory:
 
 ```bash
-python3 -m pip install -e ".[notebook]"
+uv sync --extra dev --extra notebook
 ```
+
+## Configure
+
+`mip.Client.from_env()` reads `PLATFORM_BACKEND_URL` (for example
+`https://<host>/services`) and `MIP_TOKEN`.
 
 ## API overview
 
@@ -50,6 +60,22 @@ The MVP is a strict replacement. Legacy notebook APIs such as `configure`, `Cont
 
 ## Test
 
+From this directory:
+
 ```bash
-python3 -m unittest discover -s tests -p "test_*.py"
+uv run pytest -q
+uv run python verify_script.py
 ```
+
+- Tests use `unittest` + `unittest.mock`, patching `requests.Session`; no live HTTP.
+- Add a regression test with every behavior fix.
+- When the public API changes, update [expected_library.md](expected_library.md),
+  `docs/user/api-reference.md`, and `docs/llm/wiki/03-mip-client-api.md` together.
+
+## Release
+
+Client releases are tagged `client-v<version>`, separately from image releases.
+
+1. Bump `version` in `pyproject.toml`, then run `uv lock` at the repository root.
+2. Tag `client-v<version>` and push the tag. The release workflow attaches the
+   wheel and sdist to a GitHub release.

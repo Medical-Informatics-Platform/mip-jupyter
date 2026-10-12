@@ -120,7 +120,7 @@ JupyterHub deployments may also inject `JUPYTERHUB_API_URL` and
 |------|---------|
 | `workspace/` | Notebook workspace template seeded into `/home/jovyan/work` |
 | `docs/user/` | Canonical user documentation copied into the workspace |
-| `python-client/` | `mip` package source and tests |
+| `python-client/` | `mip-client` package (import `mip`), source and tests |
 | `docker/` | Single-user and JupyterHub image definitions |
 | `dev/` | Local JupyterLab runner and development utilities |
 | `docs/architecture.md` | Runtime and packaging architecture |

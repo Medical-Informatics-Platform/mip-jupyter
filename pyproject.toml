@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Local development runner for mip-jupyter notebooks"
 requires-python = ">=3.10,<3.13"
 dependencies = [
-    "mip[notebook]",
+    "mip-client[notebook]",
     "jupyterlab>=4.6.4,<4.7",
     "jupyter-ai>=3,<4",
     "notebook>=7.6.3,<8.0.0",
@@ -23,7 +23,7 @@ mip-jupyter-mcp = "dev.jupyter_mcp_cli:main"
 cohort-scout = "dev.mip_acp_persona:CohortScoutPersona"
 
 [tool.uv.sources]
-mip = { path = "python-client", editable = true }
+mip-client = { path = "python-client", editable = true }
 
 [build-system]
 requires = ["hatchling"]
