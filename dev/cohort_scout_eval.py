@@ -11,9 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
-from urllib.error import URLError
-from urllib.request import Request
-from urllib.request import urlopen
+
+import requests
 
 from .codex_bootstrap import BASE_INSTRUCTIONS_MAX_CHARS
 from .codex_bootstrap import DEFAULT_CODEX_MODEL
@@ -241,11 +240,11 @@ def optional_vllm_ttft(
     body = json.dumps(
         {"model": model, "input": prompt, "max_output_tokens": 64}
     ).encode("utf-8")
-    request = Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
     started = time.perf_counter()
     try:
-        with urlopen(request, timeout=timeout_s) as response:
-            payload = response.read()
+        response = requests.post(url, data=body, headers={"Content-Type": "application/json"}, timeout=timeout_s)
+        response.raise_for_status()
+        payload = response.content
         elapsed_ms = int((time.perf_counter() - started) * 1000)
         return {
             "ok": True,
@@ -253,7 +252,7 @@ def optional_vllm_ttft(
             "bytes": len(payload),
             "model": model,
         }
-    except (URLError, TimeoutError, OSError) as exc:
+    except requests.RequestException as exc:
         return {"ok": False, "error": str(exc), "model": model}
 
 

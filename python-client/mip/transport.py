@@ -127,8 +127,10 @@ class Transport:
                 timeout=min(self.timeout, 15.0),
                 allow_redirects=False,
             )
+            response.raise_for_status()
         except requests.RequestException:
             return False
+        # Redirects are not followed; a 3xx here means the hub wants a login.
         if response.status_code != 200:
             return False
         try:

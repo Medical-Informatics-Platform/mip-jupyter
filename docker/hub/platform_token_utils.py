@@ -86,10 +86,8 @@ def refresh_access_token(auth_state: dict[str, Any]) -> str | None:
             },
             timeout=15,
         )
+        response.raise_for_status()
     except requests.RequestException:
-        return None
-
-    if response.status_code != 200:
         return None
 
     try:

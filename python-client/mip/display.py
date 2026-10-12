@@ -505,7 +505,7 @@ def _fmt_number(value: Any) -> Any:
         return value
     if isinstance(value, (int, float)):
         number = float(value)
-        if number != number:  # NaN
+        if math.isnan(number):
             return number
         # Preserve integers that fit exactly; otherwise round for stable display.
         if isinstance(value, int) or number.is_integer():

@@ -7,10 +7,8 @@ import json
 import os
 import sys
 from typing import Any
-from urllib.error import HTTPError
-from urllib.error import URLError
-from urllib.request import Request
-from urllib.request import urlopen
+
+import requests
 
 from dev import jupyter_mcp_tools as tools
 
@@ -37,16 +35,15 @@ def _post_json(url: str, payload: dict[str, Any], session_id: str | None = None)
     }
     if session_id:
         headers["mcp-session-id"] = session_id
-    request = Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
     try:
-        with urlopen(request, timeout=30) as response:
-            parsed = _parse_sse_response(response.read())
-            return parsed, response.headers.get("mcp-session-id") or session_id
-    except HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"MCP HTTP {exc.code}: {detail}") from exc
-    except URLError as exc:
-        raise RuntimeError(f"Could not connect to Jupyter MCP server at {url}: {exc.reason}") from exc
+        response = requests.post(url, data=json.dumps(payload).encode("utf-8"), headers=headers, timeout=30)
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        raise RuntimeError(f"MCP HTTP {exc.response.status_code}: {exc.response.text}") from exc
+    except requests.RequestException as exc:
+        raise RuntimeError(f"Could not connect to Jupyter MCP server at {url}: {exc}") from exc
+    parsed = _parse_sse_response(response.content)
+    return parsed, response.headers.get("mcp-session-id") or session_id
 
 
 def _initialize(url: str) -> str:
