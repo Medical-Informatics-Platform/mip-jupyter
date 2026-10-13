@@ -15,14 +15,17 @@ cleanup() {
   docker rm -f "${CONTAINER}" >/dev/null 2>&1 || true
 }
 
-# Stand-in for the shared examples volume the notebook operator mounts.
+# Stand-in for the shared examples volume the notebook operator mounts, shaped like
+# git-sync output (examples -> <rev>/), so the check goes through both links.
 FIXTURE=$(mktemp -d)
-printf '# %%%%\nfrom mip import Pipeline\n' >"${FIXTURE}/algorithm_examples.py"
+mkdir "${FIXTURE}/rev"
+printf '# %%%%\nfrom mip import Pipeline\n' >"${FIXTURE}/rev/algorithm_examples.py"
+ln -s rev "${FIXTURE}/examples"
 chmod -R a+rX "${FIXTURE}"
 trap 'cleanup; rm -rf "${FIXTURE}"' EXIT
 
 docker run -d --name "${CONTAINER}" -p "${PORT}:8888" \
-  -v "${FIXTURE}:/home/jovyan/work/.mip-examples/examples:ro" \
+  -v "${FIXTURE}:/home/jovyan/work/.mip-examples:ro" \
   -e JUPYTER_TOKEN="${TOKEN}" \
   -e CODEX_VLLM_BASE_URL="${CODEX_URL}" \
   -e CODEX_VLLM_MODEL="${CODEX_MODEL}" \

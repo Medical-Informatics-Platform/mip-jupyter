@@ -17,7 +17,12 @@ fi
 # resolved paths stay under the workspace (jupyter-mcp refuses anything outside it).
 if [ -e "${WORK}/.mip-examples/examples" ]; then
   if [ ! -L "${WORK}/examples" ]; then
-    [ ! -e "${WORK}/examples" ] || mv "${WORK}/examples" "${WORK}/examples-old"
+    if [ -e "${WORK}/examples" ]; then
+      # A fresh name, so mv never moves examples/ into an existing examples-old/.
+      old="${WORK}/examples-old"
+      if [ -e "${old}" ] || [ -L "${old}" ]; then old="${old}-$(date +%s)"; fi
+      mv "${WORK}/examples" "${old}"
+    fi
     ln -s .mip-examples/examples "${WORK}/examples"
   fi
 elif [ -L "${WORK}/examples" ]; then
