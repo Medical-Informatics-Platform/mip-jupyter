@@ -122,7 +122,12 @@ def _workspace_relative_path(path: str) -> Path:
     if parsed.is_absolute():
         candidate = Path(normalized).expanduser().resolve()
         _require_within_workspace(candidate)
-        relative = candidate.relative_to(_workspace_root())
+        # Key on the unresolved path: examples/ links into .mip-examples/, and callers
+        # check the examples/ prefix. Resolving is only for the containment check.
+        try:
+            relative = Path(os.path.normpath(Path(normalized).expanduser())).relative_to(_workspace_root())
+        except ValueError:  # the workspace itself named through a link
+            relative = candidate.relative_to(_workspace_root())
     else:
         if any(part == ".." for part in parsed.parts):
             raise ValueError("Path must not contain '..'.")

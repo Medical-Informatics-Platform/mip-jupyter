@@ -486,6 +486,31 @@ class TestJupyterMcpTools(unittest.TestCase):
         self.assertNotIn("deduplicated", first)
         self.assertTrue(second.get("deduplicated"))
 
+    def test_scratch_copy_template_through_examples_link(self):
+        # Production layout: examples/ links into the read-only mount at .mip-examples/.
+        tmp, workspace = self._workspace()
+        self.addCleanup(tmp.cleanup)
+        mounted = workspace / ".mip-examples" / "examples"
+        mounted.mkdir(parents=True)
+        (mounted / "algorithm_examples.py").write_text(ALGORITHM_EXAMPLES, encoding="utf-8")
+        (workspace / "examples").symlink_to(".mip-examples/examples")
+        (workspace / "scratch").mkdir()
+        (workspace.parent / "outside.py").write_text("x = 1\n", encoding="utf-8")
+        (workspace / "scratch" / "escape.py").symlink_to(workspace.parent / "outside.py")
+
+        with patch.dict(os.environ, {"MIP_JUPYTER_ROOT": str(workspace)}):
+            copied = run(
+                tools.scratch_copy_template(
+                    "scratch/copy.py",
+                    source=str(workspace / "examples" / "algorithm_examples.py"),
+                )
+            )
+            with self.assertRaises(ValueError):
+                run(tools.scratch_copy_template("scratch/x.py", source=str(workspace / "scratch" / "escape.py")))
+
+        self.assertEqual(copied["source"], "examples/algorithm_examples.py")
+        self.assertEqual((workspace / "scratch" / "copy.py").read_text(encoding="utf-8"), ALGORITHM_EXAMPLES)
+
     def test_scratch_to_notebook_deduplicates_repeat_transfer(self):
         tmp, workspace = self._workspace()
         self.addCleanup(tmp.cleanup)
