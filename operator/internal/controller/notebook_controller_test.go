@@ -167,6 +167,74 @@ var _ = Describe("Notebook controller", func() {
 		Expect(pod.Spec.InitContainers[0].SecurityContext.RunAsUser).To(Equal(ptr.To[int64](0)))
 	})
 
+	Context("shared examples", func() {
+		const mountPath = "/home/jovyan/work/.mip-examples"
+
+		BeforeEach(func() {
+			reconciler.ExamplesClaim = "mip-examples"
+			reconciler.ExamplesMountPath = mountPath
+		})
+
+		// No PV controller runs under envtest, so the test binds the claim itself.
+		examplesClaim := func(volume string) {
+			pvc := &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{Name: "mip-examples", Namespace: ns},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadOnlyMany},
+					StorageClassName: ptr.To(""),
+					VolumeName:       volume,
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, pvc)).To(Succeed())
+			pvc.Status.Phase = corev1.ClaimBound
+			Expect(k8sClient.Status().Update(ctx, pvc)).To(Succeed())
+		}
+		spawn := func(fixOwnership bool) (*notebooksv1alpha1.Notebook, *corev1.Pod) {
+			profile := newProfile()
+			profile.Spec.Storage.FixOwnership = fixOwnership
+			Expect(k8sClient.Create(ctx, profile)).To(Succeed())
+			nb := newNotebook("examples", nil)
+			Expect(k8sClient.Create(ctx, nb)).To(Succeed())
+			reconcileNB(nb)
+			pod := &corev1.Pod{}
+			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(nb), pod)).To(Succeed())
+			return nb, pod
+		}
+
+		It("mounts a claim bound to mip-examples-<ns> read-only", func() {
+			examplesClaim("mip-examples-" + ns)
+			_, pod := spawn(true)
+			Expect(pod.Spec.Volumes).To(ContainElement(corev1.Volume{
+				Name: "examples",
+				VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "mip-examples",
+					ReadOnly:  true,
+				}},
+			}))
+			Expect(pod.Spec.Containers[0].VolumeMounts).To(ContainElement(
+				corev1.VolumeMount{Name: "examples", MountPath: mountPath, ReadOnly: true}))
+		})
+		It("starts without the mount when there is no claim", func() {
+			nb, pod := spawn(true)
+			Expect(pod.Spec.Volumes).To(HaveLen(1))
+			Expect(pod.Spec.Volumes[0].Name).To(Equal(homeVolume))
+			Expect(fetch(nb).Status.Phase).To(Equal(notebooksv1alpha1.PhasePending))
+		})
+		It("ignores a claim bound to another volume", func() {
+			examplesClaim("other")
+			_, pod := spawn(true)
+			Expect(pod.Spec.Volumes).To(HaveLen(1))
+		})
+		It("needs fixOwnership, so work/ exists before the mount", func() {
+			examplesClaim("mip-examples-" + ns)
+			_, pod := spawn(false)
+			Expect(pod.Spec.Volumes).To(HaveLen(1))
+		})
+	})
+
 	It("lets the hub create only Opaque <name>-<uid>-token Secrets owned by the Notebook", func() {
 		policy, err := os.ReadFile(filepath.Join("..", "..", "config", "policy", "hub-token-secrets.yaml"))
 		Expect(err).NotTo(HaveOccurred())

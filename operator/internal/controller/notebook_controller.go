@@ -37,6 +37,10 @@ const (
 type NotebookReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	// ExamplesClaim, when set, is mounted read-only at ExamplesMountPath in every new
+	// notebook, but only if that claim is bound to the PV <claim>-<namespace>.
+	ExamplesClaim     string
+	ExamplesMountPath string
 }
 
 // +kubebuilder:rbac:groups=notebooks.mip.ebrains.eu,resources=notebooks,verbs=get;list;watch
@@ -74,6 +78,9 @@ func (r *NotebookReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			return ctrl.Result{}, err
 		}
 		pod = buildPod(nb, profile)
+		if r.examplesBound(ctx, nb.Namespace) && profile.Spec.Storage.FixOwnership {
+			addExamples(pod, r.ExamplesClaim, r.ExamplesMountPath)
+		}
 		if err := controllerutil.SetControllerReference(nb, pod, r.Scheme); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -205,6 +212,35 @@ func buildPod(nb *notebooksv1alpha1.Notebook, profile *notebooksv1alpha1.Noteboo
 		}}
 	}
 	return pod
+}
+
+// examplesBound reports whether ns holds the shared examples claim, bound to the volume the
+// infra made for this namespace. A missing or foreign claim never blocks a notebook.
+func (r *NotebookReconciler) examplesBound(ctx context.Context, ns string) bool {
+	if r.ExamplesClaim == "" {
+		return false
+	}
+	pvc := &corev1.PersistentVolumeClaim{}
+	if err := r.Get(ctx, types.NamespacedName{Namespace: ns, Name: r.ExamplesClaim}, pvc); err != nil {
+		return false
+	}
+	return pvc.DeletionTimestamp.IsZero() &&
+		pvc.Status.Phase == corev1.ClaimBound &&
+		pvc.Spec.VolumeName == r.ExamplesClaim+"-"+ns
+}
+
+// addExamples mounts the claim inside the home volume. The runtime creates the mount point,
+// as root, in the parent directory, so work/ must already exist: fix-home-perm creates it.
+func addExamples(pod *corev1.Pod, claim, mountPath string) {
+	pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+		Name: "examples",
+		VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: claim,
+			ReadOnly:  true,
+		}},
+	})
+	c := &pod.Spec.Containers[0]
+	c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{Name: "examples", MountPath: mountPath, ReadOnly: true})
 }
 
 // podStatus maps a pod to the Notebook phase, proxy URL and spawn message.

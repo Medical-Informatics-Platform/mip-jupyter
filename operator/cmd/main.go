@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"flag"
 	"os"
 	"strings"
@@ -60,8 +61,10 @@ func main() {
 	}
 
 	if err := (&controller.NotebookReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		ExamplesClaim:     os.Getenv("EXAMPLES_CLAIM"),
+		ExamplesMountPath: cmp.Or(os.Getenv("EXAMPLES_MOUNT_PATH"), "/home/jovyan/work/.mip-examples"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Notebook")
 		os.Exit(1)
