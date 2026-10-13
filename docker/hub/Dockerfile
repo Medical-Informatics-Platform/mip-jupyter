@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # Pinned by digest so pulls stay reproducible and CHP/Node stay in the base;
 # bump the digest to pick up base fixes.
-FROM jupyterhub/jupyterhub:5.5.2@sha256:1c38e6f0178c49b7b5fde7f119596a6fc8aecd66dc304403f5c1f25cfd843b5a
+FROM jupyterhub/jupyterhub:6.0.1-5@sha256:b148e8513aceb98f59bfffea51f245e9c45d99e3e504a4a92e9f3bf73589fd42
 
 # Base tag lags on OS security fixes (e.g. openssl). /srv/venv has its own
 # pip/setuptools/wheel, so the stale Ubuntu copies can go.
