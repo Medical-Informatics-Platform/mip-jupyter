@@ -91,13 +91,15 @@ adding it to that list and binding the ClusterRole there.
 
 Shared examples (optional): with `EXAMPLES_CLAIM` set (mip-infra uses
 `mip-examples`), every new notebook pod mounts that claim read-only at
-`EXAMPLES_MOUNT_PATH` (default `/home/jovyan/work/.mip-examples`). Keep the path
-under `/home/jovyan/work`: `jupyter-mcp` refuses paths that resolve outside the
-workspace. The mount is added only when the claim in the notebook's namespace is
-`Bound` to the PV `<claim>-<namespace>` and the profile sets `fixOwnership: true`
-(its init container creates `work/`, so the runtime does not create it as root
-for the mount point). A missing, unbound or foreign claim never blocks a
-notebook; it starts without examples. Rollback: unset `EXAMPLES_CLAIM`, and new
+`work/.mip-examples` under the profile's `storage.mountPath`, where the
+single-user entrypoint links `examples/` to it. The mount is added only when the
+claim in the notebook's namespace is `Bound` to the PV `<claim>-<namespace>` and
+the profile sets `fixOwnership: true` (its init container creates `work/`, so the
+runtime does not create it as root for the mount point). A missing, unbound or
+foreign claim is skipped and the notebook starts without examples; other API
+errors retry the reconcile. A claim pruned between that check and pod creation
+leaves the pod `Pending` until the notebook is recreated. The decision is in the
+"created notebook pod" log line. Rollback: unset `EXAMPLES_CLAIM`, and new
 notebooks start without the mount; running ones keep it until they restart.
 
 Reconcile of a `Notebook`:

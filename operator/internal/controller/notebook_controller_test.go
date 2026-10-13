@@ -168,15 +168,12 @@ var _ = Describe("Notebook controller", func() {
 	})
 
 	Context("shared examples", func() {
-		const mountPath = "/home/jovyan/work/.mip-examples"
-
 		BeforeEach(func() {
 			reconciler.ExamplesClaim = "mip-examples"
-			reconciler.ExamplesMountPath = mountPath
 		})
 
 		// No PV controller runs under envtest, so the test binds the claim itself.
-		examplesClaim := func(volume string) {
+		examplesClaim := func(volume string, bound bool) {
 			pvc := &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{Name: "mip-examples", Namespace: ns},
 				Spec: corev1.PersistentVolumeClaimSpec{
@@ -189,12 +186,16 @@ var _ = Describe("Notebook controller", func() {
 				},
 			}
 			Expect(k8sClient.Create(ctx, pvc)).To(Succeed())
-			pvc.Status.Phase = corev1.ClaimBound
-			Expect(k8sClient.Status().Update(ctx, pvc)).To(Succeed())
+			if bound {
+				pvc.Status.Phase = corev1.ClaimBound
+				Expect(k8sClient.Status().Update(ctx, pvc)).To(Succeed())
+			}
 		}
-		spawn := func(fixOwnership bool) (*notebooksv1alpha1.Notebook, *corev1.Pod) {
+		// home "" keeps the CRD default, /home/jovyan.
+		spawn := func(fixOwnership bool, home string) (*notebooksv1alpha1.Notebook, *corev1.Pod) {
 			profile := newProfile()
 			profile.Spec.Storage.FixOwnership = fixOwnership
+			profile.Spec.Storage.MountPath = home
 			Expect(k8sClient.Create(ctx, profile)).To(Succeed())
 			nb := newNotebook("examples", nil)
 			Expect(k8sClient.Create(ctx, nb)).To(Succeed())
@@ -205,8 +206,8 @@ var _ = Describe("Notebook controller", func() {
 		}
 
 		It("mounts a claim bound to mip-examples-<ns> read-only", func() {
-			examplesClaim("mip-examples-" + ns)
-			_, pod := spawn(true)
+			examplesClaim("mip-examples-"+ns, true)
+			_, pod := spawn(true, "")
 			Expect(pod.Spec.Volumes).To(ContainElement(corev1.Volume{
 				Name: "examples",
 				VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
@@ -215,22 +216,39 @@ var _ = Describe("Notebook controller", func() {
 				}},
 			}))
 			Expect(pod.Spec.Containers[0].VolumeMounts).To(ContainElement(
-				corev1.VolumeMount{Name: "examples", MountPath: mountPath, ReadOnly: true}))
+				corev1.VolumeMount{Name: "examples", MountPath: "/home/jovyan/work/.mip-examples", ReadOnly: true}))
+		})
+		It("mounts inside the profile's home", func() {
+			examplesClaim("mip-examples-"+ns, true)
+			_, pod := spawn(true, "/home/user")
+			Expect(pod.Spec.Containers[0].VolumeMounts).To(ContainElement(
+				corev1.VolumeMount{Name: "examples", MountPath: "/home/user/work/.mip-examples", ReadOnly: true}))
 		})
 		It("starts without the mount when there is no claim", func() {
-			nb, pod := spawn(true)
+			nb, pod := spawn(true, "")
 			Expect(pod.Spec.Volumes).To(HaveLen(1))
 			Expect(pod.Spec.Volumes[0].Name).To(Equal(homeVolume))
 			Expect(fetch(nb).Status.Phase).To(Equal(notebooksv1alpha1.PhasePending))
 		})
 		It("ignores a claim bound to another volume", func() {
-			examplesClaim("other")
-			_, pod := spawn(true)
+			examplesClaim("other", true)
+			_, pod := spawn(true, "")
+			Expect(pod.Spec.Volumes).To(HaveLen(1))
+		})
+		It("ignores a claim that is not bound", func() {
+			examplesClaim("mip-examples-"+ns, false)
+			_, pod := spawn(true, "")
+			Expect(pod.Spec.Volumes).To(HaveLen(1))
+		})
+		It("does nothing without EXAMPLES_CLAIM", func() {
+			reconciler.ExamplesClaim = ""
+			examplesClaim("mip-examples-"+ns, true)
+			_, pod := spawn(true, "")
 			Expect(pod.Spec.Volumes).To(HaveLen(1))
 		})
 		It("needs fixOwnership, so work/ exists before the mount", func() {
-			examplesClaim("mip-examples-" + ns)
-			_, pod := spawn(false)
+			examplesClaim("mip-examples-"+ns, true)
+			_, pod := spawn(false, "")
 			Expect(pod.Spec.Volumes).To(HaveLen(1))
 		})
 	})
