@@ -27,10 +27,11 @@ Restart the kernel after signing in again from the portal. If problems persist, 
 
 See [Workspace guide](workspace-guide.md) for details.
 
-## `examples/` is missing
+## `examples/` is missing or out of date
 
 The deployment does not mount the shared examples (for example KubeSpawner or
-local runs). Ask your platform administrator.
+local runs). A home created by an older image keeps its real `examples/` folder
+as a frozen copy that is no longer updated. Ask your platform administrator.
 
 ## Getting help
 

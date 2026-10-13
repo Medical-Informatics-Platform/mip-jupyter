@@ -10,6 +10,9 @@
   scratch/                  Your notebooks and experiments
 ```
 
+Without the shared examples mount, `examples/` is absent or, in a home created by
+an older image, a frozen copy that is no longer updated.
+
 ## Examples vs scratch
 
 | Location | Use for |

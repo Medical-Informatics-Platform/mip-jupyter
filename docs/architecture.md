@@ -44,8 +44,10 @@ gets a read-only claim `mip-examples` on that volume, and the notebook operator 
 claim at `/home/jovyan/work/.mip-examples` (`EXAMPLES_CLAIM`, see
 [notebook-operator.md](notebook-operator.md)). The infra side is
 [`common/examples`](https://github.com/Medical-Informatics-Platform/mip-infra-staging/tree/main/common/examples)
-in mip-infra-staging (production mip-infra follows). On start, the entrypoint links `examples` to `.mip-examples/examples`;
-without the mount (KubeSpawner, local runs) there is no `examples/`. A merge to
+in mip-infra-staging (production mip-infra follows). On start, the entrypoint links `examples` to `.mip-examples/examples`.
+Without the mount (KubeSpawner, local runs) it only removes a dangling link: a
+real `examples/` copied by older images stays as a frozen copy, and a new home
+has no `examples/`. A merge to
 mip-examples reaches running notebooks in about a minute, with no image build.
 
 ## Local development
