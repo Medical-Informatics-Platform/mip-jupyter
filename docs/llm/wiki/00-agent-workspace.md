@@ -33,7 +33,7 @@ for developer/operator setup. Connection issues → `Welcome.ipynb`,
 ## Workspace map
 
 - `Welcome.ipynb` — first steps / connection check
-- `examples/` — read freely; edit only when asked
+- `examples/` — read freely; read-only, even when asked. Copy to `scratch/` to change it
 - `scratch/` — new exploratory work (default new-notebook location)
 - Workspace `docs/` — user help via `search-docs` (not repo `docs/user/` in production)
 

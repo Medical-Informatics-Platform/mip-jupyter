@@ -61,7 +61,7 @@ Use `creator.variable` for the derived column in downstream algorithms.
 
 ## Pipeline algorithms
 
-**30** typed methods. See [Pipeline algorithms (agent wiki)](../llm/wiki/07-pipeline-algorithms.md) or run `workspace/examples/algorithm_examples.py`.
+**30** typed methods. See [Pipeline algorithms (agent wiki)](../llm/wiki/07-pipeline-algorithms.md) or run `examples/algorithm_examples.py` (local runs need a mip-examples checkout in `workspace/examples/`).
 
 ```python
 pipeline.available_algorithms()

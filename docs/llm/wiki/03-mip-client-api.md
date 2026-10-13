@@ -43,7 +43,7 @@ Use `creator.variable` downstream.
 ## Pipeline
 
 **30** typed methods — full catalog in `07-pipeline-algorithms.md`; smoke test
-`workspace/examples/algorithm_examples.py`.
+`examples/algorithm_examples.py`.
 
 ```python
 pipeline = mip.Pipeline(analysis_set=..., filters=..., handle_missing=..., new_columns=[creator])

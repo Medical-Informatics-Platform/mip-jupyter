@@ -13,7 +13,9 @@
 4. Build notebook operator image: `docker build -t mip-notebook-operator:<tag> operator` (see [notebook-operator.md](notebook-operator.md)); bump the CRDs in `mip-infra-staging` with it.
 5. Smoke-test the single-user container:
    - Jupyter opens at `/home/jovyan/work`
-   - `Welcome.ipynb`, `examples/`, `docs/`, and `scratch/` are visible
+   - `Welcome.ipynb`, `docs/`, and `scratch/` are visible; `examples/` is visible
+     when the cluster mounts the shared examples (`scripts/smoke-singleuser-image.sh`
+     mounts a fixture)
    - `docs/` contains user guides from `docs/user/` (quickstart, api-reference, troubleshooting)
    - `docs/llm/` is **not** in the file browser
    - `import mip` succeeds in a notebook

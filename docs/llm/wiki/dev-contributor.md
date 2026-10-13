@@ -7,7 +7,8 @@
 ## Project structure
 
 - `workspace/Welcome.ipynb` — local getting-started notebook
-- `workspace/examples/feres_analysis.ipynb` — Feres stroke territory example
+- `examples/` — not in this repo: the examples (e.g. `feres_analysis.ipynb`) live in
+  `Medical-Informatics-Platform/mip-examples`; clone it into `workspace/examples/` (git-ignored) for local runs
 - `docs/user/` — canonical user documentation (shipped to workspace `docs/`)
 - `python-client/` — the `mip-client` package (import `mip`); self-contained, released with `client-v*` tags
 - `python-client/tests/` — client unit tests; workspace checks (docs, notebook, jupyter-mcp) live in `dev/`

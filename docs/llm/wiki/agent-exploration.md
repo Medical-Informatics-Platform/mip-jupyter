@@ -44,7 +44,7 @@ Do **not** stop at a verified `.py` alone — finish Phase D unless the user ask
 
 ## Reference signatures
 
-Use `workspace/examples/algorithm_examples.py` and `feres_analysis.ipynb` patterns.
+Use `examples/algorithm_examples.py` and `feres_analysis.ipynb` patterns.
 Do not invent methods or sklearn-style `x=`/`y=` kwargs.
 
 ## Deliverables (session end)

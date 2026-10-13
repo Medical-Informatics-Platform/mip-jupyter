@@ -28,10 +28,15 @@ When Jupyter is launched from the MIP portal, users work in:
 ```text
 /home/jovyan/work/
   Welcome.ipynb
-  examples/
+  examples/     # read-only, when the cluster mounts the shared examples
   docs/
   scratch/
 ```
+
+The examples live in
+[`Medical-Informatics-Platform/mip-examples`](https://github.com/Medical-Informatics-Platform/mip-examples),
+not in this repository or the image. MIP clusters mount them read-only, so a
+merge there reaches running notebooks without an image build.
 
 The `mip` package is pre-installed and the platform connection is configured
 for the session:
@@ -46,7 +51,8 @@ Recommended starting path:
 
 1. Open `Welcome.ipynb` and run all cells.
 2. Read `docs/quickstart.md` for the basic workflow.
-3. Use `examples/feres_analysis.ipynb` as a reference analysis.
+3. Use `examples/feres_analysis.ipynb` as a reference analysis (read-only;
+   *File > Save Notebook As* into `scratch/` to adapt it).
 4. Save personal notebooks and experiments under `scratch/`.
 
 The source for the user documentation is [`docs/user/`](docs/user/). It is
@@ -64,14 +70,15 @@ uv run mip-notebook
 
 The local runner opens JupyterLab at `127.0.0.1:8888` with token `dev`, rooted
 at `workspace/` (same file tree as production `/home/jovyan/work`). By default
-it opens `examples/feres_analysis.ipynb`, syncs `docs/user/` into
+it opens `Welcome.ipynb`, syncs `docs/user/` into
 `workspace/docs/`, and sets `PLATFORM_BACKEND_URL` to
 `http://127.0.0.1:8080/services` unless it is already configured.
 
-Open a different notebook:
+Open a different notebook (the examples need a mip-examples checkout in
+`workspace/examples/`, which git ignores):
 
 ```bash
-MIP_NOTEBOOK=Welcome.ipynb uv run mip-notebook
+MIP_NOTEBOOK=examples/feres_analysis.ipynb uv run mip-notebook
 ```
 
 ## Build and Test

@@ -15,7 +15,7 @@ Notebooks never call Exaflow directly.
 
 | Area | Audience | Contents |
 |------|----------|----------|
-| `workspace/` | Production Jupyter users | `Welcome.ipynb`, examples, scratch (seeded into `/home/jovyan/work`) |
+| `workspace/` | Production Jupyter users | `Welcome.ipynb` (seeded into `/home/jovyan/work`) |
 | `docs/user/` | Production Jupyter users | User docs (copied to workspace `docs/` at image build) |
 | `docs/llm/` | AI agents | Task-scoped agent wiki (`AGENTS.md` bootstrap) |
 | `python-client/` | Developers | `mip-client` package (import `mip`), source and tests |
@@ -36,6 +36,17 @@ The single-user Docker image:
 5. Starts JupyterLab with root `/home/jovyan/work` and default URL `Welcome.ipynb`.
 
 Deployment artifacts (Dockerfiles, Hub config, client source, agent wiki) are not copied into the user workspace.
+
+The examples are not in the image either. They live in
+[`mip-examples`](https://github.com/Medical-Informatics-Platform/mip-examples). In MIP
+clusters a git-sync pod copies its `main` branch onto one CephFS volume, each federation
+gets a read-only claim `mip-examples` on that volume, and the notebook operator mounts the
+claim at `/home/jovyan/work/.mip-examples` (`EXAMPLES_CLAIM`, see
+[notebook-operator.md](notebook-operator.md)). The infra side is
+[`common/examples`](https://github.com/Medical-Informatics-Platform/mip-infra-staging/tree/main/common/examples)
+in mip-infra-staging (production mip-infra follows). On start, the entrypoint links `examples` to `.mip-examples/examples`;
+without the mount (KubeSpawner, local runs) there is no `examples/`. A merge to
+mip-examples reaches running notebooks in about a minute, with no image build.
 
 ## Local development
 
