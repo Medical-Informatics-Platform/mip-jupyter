@@ -13,13 +13,16 @@ if [ ! -f "${WORK}/Welcome.ipynb" ]; then
   cp -a "${TEMPLATE}/." "${WORK}/"
 fi
 
-# Existing homes skip the copy above; give them examples added since, never
-# overwriting a file the user already has (they may have edited it).
-mkdir -p "${WORK}/examples"
-for example in "${TEMPLATE}"/examples/*; do
-  [ -e "${example}" ] || continue
-  [ -e "${WORK}/examples/${example##*/}" ] || cp -a "${example}" "${WORK}/examples/"
-done
+# Shared read-only examples, mounted by the notebook operator. The link is relative, so
+# resolved paths stay under the workspace (jupyter-mcp refuses anything outside it).
+if [ -e "${WORK}/.mip-examples/examples" ]; then
+  if [ ! -L "${WORK}/examples" ]; then
+    [ ! -e "${WORK}/examples" ] || mv "${WORK}/examples" "${WORK}/examples-old"
+    ln -s .mip-examples/examples "${WORK}/examples"
+  fi
+elif [ -L "${WORK}/examples" ]; then
+  rm "${WORK}/examples"
+fi
 
 export MIP_JUPYTER_ROOT="${WORK}"
 export MIP_AGENT_DOCS="${MIP_AGENT_DOCS:-/opt/mip-agent-docs}"

@@ -14,9 +14,15 @@ CODEX_MODEL="${CODEX_VLLM_MODEL:-RadixArk/Qwen3.8-Flash-Next-NVFP4}"
 cleanup() {
   docker rm -f "${CONTAINER}" >/dev/null 2>&1 || true
 }
-trap cleanup EXIT
+
+# Stand-in for the shared examples volume the notebook operator mounts.
+FIXTURE=$(mktemp -d)
+printf '# %%%%\nfrom mip import Pipeline\n' >"${FIXTURE}/algorithm_examples.py"
+chmod -R a+rX "${FIXTURE}"
+trap 'cleanup; rm -rf "${FIXTURE}"' EXIT
 
 docker run -d --name "${CONTAINER}" -p "${PORT}:8888" \
+  -v "${FIXTURE}:/home/jovyan/work/.mip-examples/examples:ro" \
   -e JUPYTER_TOKEN="${TOKEN}" \
   -e CODEX_VLLM_BASE_URL="${CODEX_URL}" \
   -e CODEX_VLLM_MODEL="${CODEX_MODEL}" \
@@ -27,12 +33,15 @@ curl --retry 60 --retry-delay 2 --retry-all-errors -fsS \
   "http://127.0.0.1:${PORT}/api/status?token=${TOKEN}" >/dev/null
 
 docker exec "${CONTAINER}" sh -lc '
+  set -e
   test -x /tmp/mip-codex-home/bin/jupyter-mcp
   test -x /tmp/mip-codex-home/bin/mip-shell-guard
   test ! -f /tmp/mip-codex-home/bin/codex-acp || test -x /tmp/mip-codex-home/bin/codex-acp
-  ! grep -q "\[mcp_servers" /tmp/mip-codex-home/config.toml
+  ! grep -q "\[mcp_servers" /tmp/mip-codex-home/config.toml || exit 1
   test -d /home/jovyan/work/scratch
+  test -L /home/jovyan/work/examples
   grep -q "# %%" /home/jovyan/work/examples/algorithm_examples.py
+  ! touch /home/jovyan/work/examples/x 2>/dev/null || exit 1
 '
 
 docker exec "${CONTAINER}" python -m dev.jupyter_mcp_cli \
@@ -41,7 +50,13 @@ docker exec "${CONTAINER}" python -m dev.jupyter_mcp_cli \
 
 docker exec "${CONTAINER}" python -m dev.jupyter_mcp_cli \
   --mcp-url http://127.0.0.1:3001/mcp \
-  notebook-outline workspace/examples/feres_analysis.ipynb >/dev/null
+  notebook-outline Welcome.ipynb >/dev/null
+
+# The default source, examples/algorithm_examples.py, goes through the link.
+docker exec "${CONTAINER}" python -m dev.jupyter_mcp_cli \
+  --mcp-url http://127.0.0.1:3001/mcp \
+  scratch-copy-template scratch/smoke.py >/dev/null
+docker exec "${CONTAINER}" grep -q "# %%" /home/jovyan/work/scratch/smoke.py
 
 docker exec "${CONTAINER}" sh -lc '
   if /tmp/mip-codex-home/bin/mip-shell-guard -c "cat > scratch/foo.py << EOF"; then

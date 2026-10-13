@@ -9,6 +9,10 @@ from unittest.mock import patch
 from dev import jupyter_mcp_tools as tools
 
 
+# Stand-in for mip-examples' algorithm_examples.py, which is no longer in this repo.
+ALGORITHM_EXAMPLES = '# %%\nfrom mip import Pipeline\n\nDATA_MODEL = "Stroke 3.7"\n'
+
+
 def run(coro):
     return asyncio.run(coro)
 
@@ -355,14 +359,9 @@ class TestJupyterMcpTools(unittest.TestCase):
     def test_scratch_copy_template_and_to_notebook(self):
         tmp, workspace = self._workspace()
         self.addCleanup(tmp.cleanup)
-        repo = Path(__file__).resolve().parents[1]
-        examples = repo / "workspace" / "examples" / "algorithm_examples.py"
         example_dir = workspace / "examples"
         example_dir.mkdir(parents=True, exist_ok=True)
-        (example_dir / "algorithm_examples.py").write_text(
-            examples.read_text(encoding="utf-8"),
-            encoding="utf-8",
-        )
+        (example_dir / "algorithm_examples.py").write_text(ALGORITHM_EXAMPLES, encoding="utf-8")
 
         with patch.dict(os.environ, {"MIP_JUPYTER_ROOT": str(workspace)}):
             copied = run(
@@ -490,14 +489,9 @@ class TestJupyterMcpTools(unittest.TestCase):
     def test_scratch_to_notebook_deduplicates_repeat_transfer(self):
         tmp, workspace = self._workspace()
         self.addCleanup(tmp.cleanup)
-        repo = Path(__file__).resolve().parents[1]
-        examples = repo / "workspace" / "examples" / "algorithm_examples.py"
         example_dir = workspace / "examples"
         example_dir.mkdir(parents=True, exist_ok=True)
-        (example_dir / "algorithm_examples.py").write_text(
-            examples.read_text(encoding="utf-8"),
-            encoding="utf-8",
-        )
+        (example_dir / "algorithm_examples.py").write_text(ALGORITHM_EXAMPLES, encoding="utf-8")
         (workspace / "scratch").mkdir(parents=True, exist_ok=True)
 
         with patch.dict(os.environ, {"MIP_JUPYTER_ROOT": str(workspace)}):

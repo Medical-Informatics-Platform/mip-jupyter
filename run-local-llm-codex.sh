@@ -21,7 +21,7 @@ export JUPYTER_HOST="${JUPYTER_HOST:-127.0.0.1}"
 export JUPYTER_PORT="${JUPYTER_PORT:-8888}"
 export JUPYTER_TOKEN="${JUPYTER_TOKEN:-dev}"
 # Relative to workspace/ (JupyterLab root), same layout as production /home/jovyan/work.
-export MIP_NOTEBOOK="${MIP_NOTEBOOK:-examples/feres_analysis.ipynb}"
+export MIP_NOTEBOOK="${MIP_NOTEBOOK:-Welcome.ipynb}"
 
 echo "Starting mip-jupyter with vLLM Codex (${CODEX_VLLM_MODEL})"
 echo "Codex vLLM endpoint: ${CODEX_VLLM_BASE_URL}"
