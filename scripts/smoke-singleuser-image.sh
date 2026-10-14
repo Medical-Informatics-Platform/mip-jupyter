@@ -16,7 +16,7 @@ cleanup() {
 }
 
 # Stand-in for the shared examples volume the notebook operator mounts, shaped like
-# git-sync output (examples -> <rev>/), so the check goes through both links.
+# mip-examples-sync output (examples -> rev-<sha>/), so the check goes through both links.
 FIXTURE=$(mktemp -d)
 mkdir "${FIXTURE}/rev"
 printf '# %%%%\nfrom mip import Pipeline\n' >"${FIXTURE}/rev/algorithm_examples.py"

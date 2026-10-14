@@ -39,7 +39,8 @@ Deployment artifacts (Dockerfiles, Hub config, client source, agent wiki) are no
 
 The examples are not in the image either. They live in
 [`mip-examples`](https://github.com/Medical-Informatics-Platform/mip-examples). In MIP
-clusters a git-sync pod copies its `main` branch onto one CephFS volume, each federation
+clusters its CI publishes `master` as the data-only image `hbpmip/mip-examples:latest`, the
+`mip-examples-sync` CronJob copies it every minute onto one CephFS volume, each federation
 gets a read-only claim `mip-examples` on that volume, and the notebook operator mounts the
 claim at `/home/jovyan/work/.mip-examples` (`EXAMPLES_CLAIM`, see
 [notebook-operator.md](notebook-operator.md)). The infra side is
