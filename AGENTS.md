@@ -19,5 +19,5 @@ No full-repo `find`, `grep`, or tree listing on startup. Route to one wiki page
 - Never print, log, or commit token values (`MIP_TOKEN`, `PLATFORM_TOKEN`, …)
 - Do not commit, push, reset, stash, or change remotes unless asked
 - Do not read `.venv/`, `.ipynb_checkpoints/`, `.playwright-cli/`, or `uv.lock`
-- Read `expected_library.md` only when `03-mip-client-api.md` is insufficient
+- Read `python-client/expected_library.md` only when `03-mip-client-api.md` is insufficient
 - Client/dev work: [wiki/dev-contributor.md](docs/llm/wiki/dev-contributor.md)

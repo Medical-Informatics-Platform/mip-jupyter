@@ -1,0 +1,24 @@
+name: Release mip-client
+
+on:
+  push:
+    tags: ["client-v*"]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: python-client
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      # Fail if the tag and python-client/pyproject.toml disagree.
+      - run: test "client-v$(uv version --short)" = "$GITHUB_REF_NAME"
+      - run: uv build
+      # Release assets are immutable, so consumers can lock their hashes.
+      - run: gh release create "$GITHUB_REF_NAME" dist/* --title "mip-client ${GITHUB_REF_NAME#client-v}" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

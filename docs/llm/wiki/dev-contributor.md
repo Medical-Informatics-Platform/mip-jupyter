@@ -7,17 +7,18 @@
 ## Project structure
 
 - `workspace/Welcome.ipynb` — local getting-started notebook
-- `workspace/examples/feres_analysis.ipynb` — Feres stroke territory example
+- `examples/` — not in this repo: the examples (e.g. `feres_analysis.ipynb`) live in
+  `Medical-Informatics-Platform/mip-examples`; clone it into `workspace/examples/` (git-ignored) for local runs
 - `docs/user/` — canonical user documentation (shipped to workspace `docs/`)
-- `python-client/mip/` — library modules (`client.py`, `catalog.py`, `pipeline.py`, etc.)
-- `python-client/tests/` — unit tests; `conftest.py` keeps imports stable
-- `expected_library.md` — public API contract exercised by `workspace/Welcome.ipynb`
+- `python-client/` — the `mip-client` package (import `mip`); self-contained, released with `client-v*` tags
+- `python-client/tests/` — client unit tests; workspace checks (docs, notebook, jupyter-mcp) live in `dev/`
+- `python-client/expected_library.md` — public API contract exercised by `workspace/Welcome.ipynb`
 
 Do not hand-edit generated artifacts in `build/`, `*.egg-info/`, or `__pycache__/`.
 
 When the public API changes, update these together:
 
-- `expected_library.md`
+- `python-client/expected_library.md`
 - `docs/user/api-reference.md`
 - `docs/llm/wiki/03-mip-client-api.md`
 
@@ -48,10 +49,10 @@ client.catalog().data_model("code", version="x.y")
 
 ## Testing guidelines
 
-- `unittest` + `unittest.mock` patching `requests.Session`
 - Files: `test_*.py`; methods: `test_<behavior>`
 - No live HTTP in tests
-- Add a regression test with every behavior fix in `mip`
+- Client testing rules: `python-client/README.md`
+- `python-client/` must not import or read anything outside itself
 
 ## Commit and PR guidelines
 

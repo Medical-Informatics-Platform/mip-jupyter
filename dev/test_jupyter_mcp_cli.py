@@ -47,17 +47,6 @@ def test_parse_sse_response_reads_data_lines() -> None:
     assert parsed == {"ok": True}
 
 
-def test_algorithm_examples_exists_with_cell_markers() -> None:
-    from pathlib import Path
-
-    repo = Path(__file__).resolve().parents[1]
-    examples = repo / "workspace" / "examples" / "algorithm_examples.py"
-    assert examples.is_file()
-    text = examples.read_text(encoding="utf-8")
-    assert "# %%" in text
-    assert "Pipeline" in text
-
-
 def test_scratch_copy_template_cli_routes() -> None:
     args = jupyter_mcp_cli._parser().parse_args(
         ["scratch-copy-template", "scratch/my_analysis.py"]

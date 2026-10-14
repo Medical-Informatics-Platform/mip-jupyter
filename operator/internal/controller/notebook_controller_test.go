@@ -132,6 +132,7 @@ var _ = Describe("Notebook controller", func() {
 			env[e.Name] = e
 		}
 		Expect(env["PLATFORM_BACKEND_URL"].Value).To(Equal("http://backend"))
+		Expect(env["MIP_WORK_DIR"].Value).To(Equal("/home/jovyan/work"))
 		Expect(env["JUPYTERHUB_SERVICE_PREFIX"].Value).To(Equal("/notebook/user/alice/"))
 		Expect(env["JUPYTERHUB_API_TOKEN"].ValueFrom.SecretKeyRef.Name).To(Equal(nb.Name + "-" + string(nb.UID) + "-token"))
 		Expect(env["JUPYTERHUB_API_TOKEN"].Value).To(BeEmpty())
@@ -165,6 +166,87 @@ var _ = Describe("Notebook controller", func() {
 		pod := buildPod(newNotebook("x", nil), profile)
 		Expect(pod.Spec.InitContainers).To(HaveLen(1))
 		Expect(pod.Spec.InitContainers[0].SecurityContext.RunAsUser).To(Equal(ptr.To[int64](0)))
+	})
+
+	Context("shared examples", func() {
+		BeforeEach(func() {
+			reconciler.ExamplesClaim = "mip-examples"
+		})
+
+		// No PV controller runs under envtest, so the test binds the claim itself.
+		examplesClaim := func(bound bool) {
+			pvc := &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{Name: "mip-examples", Namespace: ns},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, pvc)).To(Succeed())
+			if bound {
+				pvc.Status.Phase = corev1.ClaimBound
+				Expect(k8sClient.Status().Update(ctx, pvc)).To(Succeed())
+			}
+		}
+		// home "" keeps the CRD default, /home/jovyan.
+		spawn := func(fixOwnership bool, home string) (*notebooksv1alpha1.Notebook, *corev1.Pod) {
+			profile := newProfile()
+			profile.Spec.Storage.FixOwnership = fixOwnership
+			profile.Spec.Storage.MountPath = home
+			Expect(k8sClient.Create(ctx, profile)).To(Succeed())
+			nb := newNotebook("examples", nil)
+			Expect(k8sClient.Create(ctx, nb)).To(Succeed())
+			reconcileNB(nb)
+			pod := &corev1.Pod{}
+			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(nb), pod)).To(Succeed())
+			return nb, pod
+		}
+
+		It("mounts a bound claim read-only", func() {
+			examplesClaim(true)
+			_, pod := spawn(true, "")
+			Expect(pod.Spec.Volumes).To(ContainElement(corev1.Volume{
+				Name: "examples",
+				VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "mip-examples",
+					ReadOnly:  true,
+				}},
+			}))
+			Expect(pod.Spec.Containers[0].VolumeMounts).To(ContainElement(
+				corev1.VolumeMount{Name: "examples", MountPath: "/home/jovyan/work/.mip-examples", ReadOnly: true}))
+		})
+		It("mounts inside the profile's home", func() {
+			examplesClaim(true)
+			_, pod := spawn(true, "/home/user")
+			Expect(pod.Spec.Containers[0].VolumeMounts).To(ContainElement(
+				corev1.VolumeMount{Name: "examples", MountPath: "/home/user/work/.mip-examples", ReadOnly: true}))
+			// The entrypoint looks for the mount under MIP_WORK_DIR.
+			Expect(pod.Spec.Containers[0].Env).To(ContainElement(corev1.EnvVar{Name: "MIP_WORK_DIR", Value: "/home/user/work"}))
+		})
+		It("starts without the mount when there is no claim", func() {
+			nb, pod := spawn(true, "")
+			Expect(pod.Spec.Volumes).To(HaveLen(1))
+			Expect(pod.Spec.Volumes[0].Name).To(Equal(homeVolume))
+			Expect(fetch(nb).Status.Phase).To(Equal(notebooksv1alpha1.PhasePending))
+		})
+		It("ignores a claim that is not bound", func() {
+			examplesClaim(false)
+			_, pod := spawn(true, "")
+			Expect(pod.Spec.Volumes).To(HaveLen(1))
+		})
+		It("does nothing without EXAMPLES_CLAIM", func() {
+			reconciler.ExamplesClaim = ""
+			examplesClaim(true)
+			_, pod := spawn(true, "")
+			Expect(pod.Spec.Volumes).To(HaveLen(1))
+		})
+		It("needs fixOwnership, so work/ exists before the mount", func() {
+			examplesClaim(true)
+			_, pod := spawn(false, "")
+			Expect(pod.Spec.Volumes).To(HaveLen(1))
+		})
 	})
 
 	It("lets the hub create only Opaque <name>-<uid>-token Secrets owned by the Notebook", func() {

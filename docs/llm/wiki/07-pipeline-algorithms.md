@@ -15,7 +15,7 @@ client.algorithms().list()
 pipeline.recommend_algorithms()
 ```
 
-Full runnable script: `workspace/examples/algorithm_examples.py`.
+Full runnable script: `examples/algorithm_examples.py`.
 
 Preprocessing: `MissingValuesHandler`, `OutlierWinsorizer`,
 `CategoricalColumnCreator`, `LongitudinalTransformer` (via `Pipeline(..., longitudinal=...)`).

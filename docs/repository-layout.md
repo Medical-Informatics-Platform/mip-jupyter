@@ -13,18 +13,16 @@ mip-jupyter/
       Dockerfile            # JupyterHub image
       jupyterhub_config.py
 
-  python-client/
+  python-client/            # mip-client package (import `mip`), self-contained
     mip/                    # Installed as package in production images
     tests/
+    expected_library.md     # API contract for client development
     pyproject.toml
 
   workspace/                # Notebooks seeded into /home/jovyan/work
     Welcome.ipynb           # Default landing / onboarding
-    examples/
-      feres_analysis.ipynb
-      ist_scenario_1_aspirin.ipynb     # IST teaching scenarios (IST data model)
-      ist_scenario_2_heparin.ipynb
-      ist_scenario_3_prognosis.ipynb
+    # examples/ is not in the repo: the examples live in mip-examples, mounted
+    # read-only by MIP clusters. A local checkout there is git-ignored.
     # scratch/ is not in the repo: the entrypoint creates it empty in the
     # workspace and nothing is shipped into it.
 
@@ -42,7 +40,6 @@ mip-jupyter/
     operators.md
 
   dev/          # Local dev runner (not in production workspace)
-  expected_library.md       # API contract for client development
 ```
 
 ## What production users see
@@ -50,7 +47,7 @@ mip-jupyter/
 ```text
 /home/jovyan/work/
   Welcome.ipynb             # Opens by default
-  examples/
+  examples/                 # read-only link, when the cluster mounts the shared examples
   docs/                     # from docs/user/
   scratch/
 ```

@@ -3,7 +3,6 @@
 # scratch and a docs symlink there. The patterns below still apply inside.
 workspace/*
 !workspace/Welcome.ipynb
-!workspace/examples/
 
 .git
 .github

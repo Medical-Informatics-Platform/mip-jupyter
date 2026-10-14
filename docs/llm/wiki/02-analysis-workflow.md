@@ -61,6 +61,6 @@ experiment. Inspect with `result.summary()` / `result.raw` / `result.payload`.
 - Federated aggregates only — no raw row extraction
 
 Algorithms + result keys: `07-pipeline-algorithms.md`. Stroke patterns:
-`recipes/stroke-analysis.md`. Example: `workspace/examples/feres_analysis.ipynb`.
+`recipes/stroke-analysis.md`. Example: `examples/FERES/feres_analysis.ipynb`.
 
 **Next file:** example notebook or `03-mip-client-api.md`.

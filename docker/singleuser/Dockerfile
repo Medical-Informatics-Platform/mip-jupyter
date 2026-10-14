@@ -1,7 +1,11 @@
 # syntax=docker/dockerfile:1.7
+# Each rule below fires once, on purpose (see the comments at those lines):
+# DL3006 the arch-selected local stage, DL3008 Debian's tini, SC2016 the literal $PATH.
+# hadolint global ignore=DL3006,DL3008,SC2016
 
-FROM python:3.12-slim-trixie AS build
-COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /usr/local/bin/uv
+# Base images are pinned by digest; bump the digest to pick up base fixes.
+FROM python:3.12-slim-trixie@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 AS build
+COPY --from=ghcr.io/astral-sh/uv:0.11@sha256:77280f2f771df71f90786c314fe1bbc1e023feac652969bbf139c280babf2eb7 /uv /usr/local/bin/uv
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     UV_LINK_MODE=copy \
@@ -12,11 +16,13 @@ WORKDIR /opt/mip-build
 # uv venvs have no pip; add it so notebook `%pip install` works.
 COPY pyproject.toml uv.lock ./
 COPY python-client/pyproject.toml ./python-client/
+# This is `uv pip`, and its cache lives in the BuildKit cache mount, not the layer.
+# nosemgrep: semgrep-rules.dockerfile.best-practice.missing-pip-no-cache-dir
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --no-install-project --no-install-package mip \
+    uv sync --locked --no-dev --no-install-project --no-install-package mip-client \
     && uv pip install --python /opt/venv/bin/python pip==26.2.1
 
-# Our packages: seconds to rebuild. uv.sources marks mip editable for local dev;
+# Our packages: seconds to rebuild. uv.sources marks mip-client editable for local dev;
 # --no-editable copies it into the venv. --inexact keeps pip.
 COPY python-client/README.md ./python-client/
 COPY python-client/mip ./python-client/mip
@@ -27,22 +33,25 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # codex-acp's npm package is a node shim around a native binary; ship the binary only.
 # One stage per arch: an unsupported TARGETARCH fails the build (no such stage).
 # Checksums are the npm tarballs' (verified against the registry's dist.integrity).
+# ADD, not COPY: only ADD fetches a URL, and --checksum makes BuildKit verify it.
 FROM scratch AS codex-acp-amd64
-ADD --checksum=sha256:9acfd7576986dc571a35479cbbf72790df40c90b9b89b436bc82500372918ee8 \
-    https://registry.npmjs.org/@zed-industries/codex-acp-linux-x64/-/codex-acp-linux-x64-0.16.0.tgz /acp.tgz
+# nosemgrep: semgrep-rules.dockerfile.best-practice.prefer-copy-over-add
+ADD --checksum=sha256:9acfd7576986dc571a35479cbbf72790df40c90b9b89b436bc82500372918ee8 https://registry.npmjs.org/@zed-industries/codex-acp-linux-x64/-/codex-acp-linux-x64-0.16.0.tgz /acp.tgz
 
 FROM scratch AS codex-acp-arm64
-ADD --checksum=sha256:70f6126de278bb854f7df50cbd748b58fd01a34a5e58f16976990064bb1c59a1 \
-    https://registry.npmjs.org/@zed-industries/codex-acp-linux-arm64/-/codex-acp-linux-arm64-0.16.0.tgz /acp.tgz
+# nosemgrep: semgrep-rules.dockerfile.best-practice.prefer-copy-over-add
+ADD --checksum=sha256:70f6126de278bb854f7df50cbd748b58fd01a34a5e58f16976990064bb1c59a1 https://registry.npmjs.org/@zed-industries/codex-acp-linux-arm64/-/codex-acp-linux-arm64-0.16.0.tgz /acp.tgz
 
+# A local stage picked by arch, not a registry image, so there is no tag to pin.
+# nosemgrep: semgrep-rules.dockerfile.best-practice.missing-image-version
 FROM codex-acp-${TARGETARCH} AS codex-acp-tgz
 
-FROM python:3.12-slim-trixie AS codex-acp
+FROM python:3.12-slim-trixie@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 AS codex-acp
 RUN --mount=from=codex-acp-tgz,source=/acp.tgz,target=/tmp/acp.tgz \
     tar -xzf /tmp/acp.tgz -C /tmp package/bin/codex-acp \
     && install -m 755 /tmp/package/bin/codex-acp /usr/local/bin/codex-acp
 
-FROM python:3.12-slim-trixie
+FROM python:3.12-slim-trixie@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
 
 ENV PYTHONUNBUFFERED=1 \
     PLATFORM_BACKEND_URL=http://platform-backend:8080/services \
@@ -57,11 +66,16 @@ ENV PYTHONUNBUFFERED=1 \
 
 # gid 100 (users) matches KubeSpawner fsGroup.
 # System pip/ensurepip are unused (the venv has its own pip) and lag on CVEs.
+# apt-get upgrade takes Debian security fixes newer than the base digest; for the
+# same reason tini is not version-pinned (Debian drops superseded versions).
+# The profile line writes a literal $PATH on purpose.
+# nosemgrep: semgrep-rules.dockerfile.best-practice.avoid-apt-get-upgrade
 RUN apt-get update \
     && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends tini \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-       /usr/local/lib/python3.12/site-packages/pip* \
+    && rm -rf /usr/local/lib/python3.12/site-packages/pip* \
        /usr/local/lib/python3.12/ensurepip/_bundled \
        /usr/local/bin/pip* \
     && useradd -m -u 1000 -g 100 -s /bin/bash jovyan \
@@ -79,7 +93,7 @@ COPY --chown=1000:100 AGENTS.md /opt/mip-agent-docs/
 COPY --chmod=755 docker/singleuser/entrypoint.sh /usr/local/bin/mip-jupyter-entrypoint.sh
 
 WORKDIR /home/jovyan/work
-USER jovyan
+USER 1000:100
 
 EXPOSE 8888
 ENTRYPOINT ["tini", "--", "mip-jupyter-entrypoint.sh"]

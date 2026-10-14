@@ -5,16 +5,19 @@
 ```text
 /home/jovyan/work/          (or workspace/ in local dev)
   Welcome.ipynb             Getting started
-  examples/                 Canonical templates — copy before editing
+  examples/                 Canonical templates, read-only and updated centrally
   docs/                     User documentation (this folder)
   scratch/                  Your notebooks and experiments
 ```
+
+Without the shared examples mount, `examples/` is absent or, in a home created by
+an older image, a frozen copy that is no longer updated.
 
 ## Examples vs scratch
 
 | Location | Use for |
 |----------|---------|
-| `examples/` | Reference notebooks shipped with the platform. Read and learn from them. Copy into `scratch/` before making changes. |
+| `examples/` | Reference notebooks, read-only and updated centrally. Read and learn from them. To adapt one, open it and use *File > Save Notebook As* into `scratch/`. |
 | `scratch/` | Your own analysis work. Safe to create, edit, and delete freely. |
 
 Create new notebooks in `scratch/` unless your team has a different shared location.

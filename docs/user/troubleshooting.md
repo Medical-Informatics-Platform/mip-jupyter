@@ -23,9 +23,15 @@ Restart the kernel after signing in again from the portal. If problems persist, 
 ## Where to save work
 
 - Use `scratch/` for your own notebooks and experiments.
-- Canonical examples under `examples/` are provided as templates; copy them into `scratch/` before editing if you want to keep the originals.
+- Canonical examples under `examples/` are read-only and updated centrally. To adapt one, open it and use *File > Save Notebook As* into `scratch/`.
 
 See [Workspace guide](workspace-guide.md) for details.
+
+## `examples/` is missing or out of date
+
+The deployment does not mount the shared examples (for example KubeSpawner or
+local runs). A home created by an older image keeps its real `examples/` folder
+as a frozen copy that is no longer updated. Ask your platform administrator.
 
 ## Getting help
 

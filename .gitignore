@@ -35,6 +35,8 @@ scratch/
 untitled*.chat
 python-client/uv.lock
 workspace/notebooks/
+# Local mip-examples checkout for development; the examples live in that repo.
+workspace/examples/
 
 # LLM runtime state
 .llm/chats/*

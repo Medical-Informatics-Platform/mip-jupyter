@@ -129,6 +129,7 @@ class Transport:
             )
         except requests.RequestException:
             return False
+        # Errors and 3xx alike: redirects are not followed, and a 3xx means the hub wants a login.
         if response.status_code != 200:
             return False
         try:

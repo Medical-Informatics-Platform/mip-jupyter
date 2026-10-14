@@ -7,10 +7,8 @@ import json
 import os
 import sys
 from typing import Any
-from urllib.error import HTTPError
-from urllib.error import URLError
-from urllib.request import Request
-from urllib.request import urlopen
+
+import requests
 
 from dev import jupyter_mcp_tools as tools
 
@@ -31,22 +29,18 @@ def _parse_sse_response(body: bytes) -> dict[str, Any]:
 
 
 def _post_json(url: str, payload: dict[str, Any], session_id: str | None = None) -> tuple[dict[str, Any], str | None]:
-    headers = {
-        "Accept": "application/json, text/event-stream",
-        "Content-Type": "application/json",
-    }
+    headers = {"Accept": "application/json, text/event-stream"}
     if session_id:
         headers["mcp-session-id"] = session_id
-    request = Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
     try:
-        with urlopen(request, timeout=30) as response:
-            parsed = _parse_sse_response(response.read())
-            return parsed, response.headers.get("mcp-session-id") or session_id
-    except HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"MCP HTTP {exc.code}: {detail}") from exc
-    except URLError as exc:
-        raise RuntimeError(f"Could not connect to Jupyter MCP server at {url}: {exc.reason}") from exc
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        raise RuntimeError(f"MCP HTTP {exc.response.status_code}: {exc.response.text}") from exc
+    except requests.RequestException as exc:
+        raise RuntimeError(f"Could not connect to Jupyter MCP server at {url}: {exc}") from exc
+    parsed = _parse_sse_response(response.content)
+    return parsed, response.headers.get("mcp-session-id") or session_id
 
 
 def _initialize(url: str) -> str:
@@ -98,8 +92,7 @@ def _content_from_args(args: argparse.Namespace) -> str:
                 )
             content = sys.stdin.read()
         else:
-            relative = tools._workspace_relative_path(args.content_file)
-            file_path = tools._workspace_root() / relative
+            relative, file_path = tools._workspace_file(args.content_file)
             if not file_path.is_file():
                 raise FileNotFoundError(f"Content file not found in workspace: {relative.as_posix()}")
             content = file_path.read_text(encoding="utf-8")

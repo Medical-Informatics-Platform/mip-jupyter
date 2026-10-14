@@ -1,19 +1,16 @@
 import asyncio
 import json
 import os
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-ROOT = Path(__file__).resolve().parents[2]
-CLIENT = ROOT / "python-client"
-for path in (ROOT, CLIENT):
-    if str(path) not in sys.path:
-        sys.path.insert(0, str(path))
+from dev import jupyter_mcp_tools as tools
 
-from dev import jupyter_mcp_tools as tools  # noqa: E402
+
+# Stand-in for mip-examples' algorithm_examples.py, which is no longer in this repo.
+ALGORITHM_EXAMPLES = '# %%\nfrom mip import Pipeline\n\nDATA_MODEL = "Stroke 3.7"\n'
 
 
 def run(coro):
@@ -347,7 +344,7 @@ class TestJupyterMcpTools(unittest.TestCase):
     def test_stroke_recipe_allowlist_includes_coverage_guidance(self):
         tmp, workspace = self._workspace()
         self.addCleanup(tmp.cleanup)
-        repo = Path(__file__).resolve().parents[2]
+        repo = Path(__file__).resolve().parents[1]
         with patch.dict(os.environ, {"MIP_JUPYTER_ROOT": str(workspace), "MIP_AGENT_DOCS": str(repo)}):
             guide = run(tools.agent_read_guide(page="recipes/stroke-analysis", max_chars=8000))
 
@@ -362,14 +359,9 @@ class TestJupyterMcpTools(unittest.TestCase):
     def test_scratch_copy_template_and_to_notebook(self):
         tmp, workspace = self._workspace()
         self.addCleanup(tmp.cleanup)
-        repo = Path(__file__).resolve().parents[2]
-        examples = repo / "workspace" / "examples" / "algorithm_examples.py"
         example_dir = workspace / "examples"
         example_dir.mkdir(parents=True, exist_ok=True)
-        (example_dir / "algorithm_examples.py").write_text(
-            examples.read_text(encoding="utf-8"),
-            encoding="utf-8",
-        )
+        (example_dir / "algorithm_examples.py").write_text(ALGORITHM_EXAMPLES, encoding="utf-8")
 
         with patch.dict(os.environ, {"MIP_JUPYTER_ROOT": str(workspace)}):
             copied = run(
@@ -494,17 +486,103 @@ class TestJupyterMcpTools(unittest.TestCase):
         self.assertNotIn("deduplicated", first)
         self.assertTrue(second.get("deduplicated"))
 
+    def test_scratch_copy_template_through_examples_link(self):
+        # Production layout: examples/ links into the read-only mount at .mip-examples/.
+        tmp, workspace = self._workspace()
+        self.addCleanup(tmp.cleanup)
+        mounted = workspace / ".mip-examples" / "examples"
+        mounted.mkdir(parents=True)
+        (mounted / "algorithm_examples.py").write_text(ALGORITHM_EXAMPLES, encoding="utf-8")
+        (workspace / "examples").symlink_to(".mip-examples/examples")
+        (workspace / "scratch").mkdir()
+        (workspace.parent / "outside.py").write_text("x = 1\n", encoding="utf-8")
+        (workspace / "scratch" / "escape.py").symlink_to(workspace.parent / "outside.py")
+        # The workspace named through an alias, e.g. a linked home.
+        alias = workspace.parent / "alias"
+        alias.symlink_to(workspace)
+
+        with patch.dict(os.environ, {"MIP_JUPYTER_ROOT": str(workspace)}):
+            copied = run(
+                tools.scratch_copy_template(
+                    "scratch/copy.py",
+                    source=str(workspace / "examples" / "algorithm_examples.py"),
+                )
+            )
+            via_alias = run(
+                tools.scratch_copy_template(
+                    str(alias / "scratch" / "alias.py"),
+                    source=str(alias / "examples" / "algorithm_examples.py"),
+                )
+            )
+            self.assertEqual(via_alias["source"], "examples/algorithm_examples.py")
+            self.assertEqual(via_alias["dest"], "scratch/alias.py")
+            # The key keeps the link's name; the file to open is the checked, resolved one.
+            key, file_path = tools._workspace_file(str(alias / "examples" / "algorithm_examples.py"))
+            self.assertEqual(key.as_posix(), "examples/algorithm_examples.py")
+            self.assertEqual(file_path, (mounted / "algorithm_examples.py").resolve())
+            with self.assertRaises(ValueError):
+                run(tools.scratch_copy_template("scratch/x.py", source=str(workspace / "scratch" / "escape.py")))
+            # examples/../ resolves into .mip-examples/, but root/scratch/escape.py is what opens.
+            dotdot = str(workspace / "examples" / ".." / "scratch" / "escape.py")
+            with self.assertRaises(ValueError):
+                run(tools.scratch_read(dotdot))
+            with self.assertRaises(ValueError):
+                run(tools.scratch_write_file(dotdot, "x = 2\n"))
+
+        self.assertEqual((workspace.parent / "outside.py").read_text(encoding="utf-8"), "x = 1\n")
+        self.assertEqual(copied["source"], "examples/algorithm_examples.py")
+        self.assertEqual((workspace / "scratch" / "copy.py").read_text(encoding="utf-8"), ALGORITHM_EXAMPLES)
+
+    def test_blocked_path_parts_refused_relative_and_absolute(self):
+        tmp, workspace = self._workspace()
+        self.addCleanup(tmp.cleanup)
+        checkpoints = workspace / "scratch" / ".ipynb_checkpoints"
+        checkpoints.mkdir(parents=True)
+        (checkpoints / "a-checkpoint.py").write_text("x = 1\n", encoding="utf-8")
+        (workspace / "scratch" / "link.py").symlink_to(".ipynb_checkpoints/a-checkpoint.py")
+
+        with patch.dict(os.environ, {"MIP_JUPYTER_ROOT": str(workspace)}):
+            for path in (
+                "scratch/.ipynb_checkpoints/a-checkpoint.py",
+                str(checkpoints / "a-checkpoint.py"),
+                "scratch/link.py",
+                str(workspace / "scratch" / "link.py"),
+            ):
+                with self.subTest(path=path), self.assertRaisesRegex(ValueError, "blocked"):
+                    run(tools.scratch_read(path))
+
+    def test_scratch_writes_stay_in_scratch_through_links(self):
+        tmp, workspace = self._workspace()
+        self.addCleanup(tmp.cleanup)
+        (workspace / "scratch").mkdir()
+        (workspace / "keep.py").write_text("x = 1\n", encoding="utf-8")
+        (workspace / "scratch" / "notes.md").write_text("# notes\n", encoding="utf-8")
+        (workspace / "scratch" / "out.py").symlink_to("../keep.py")
+        (workspace / "scratch" / "md.py").symlink_to("notes.md")
+
+        with patch.dict(os.environ, {"MIP_JUPYTER_ROOT": str(workspace)}):
+            with self.assertRaisesRegex(ValueError, "under scratch/"):
+                run(tools.scratch_write_file("scratch/out.py", "x = 2\n"))
+            with self.assertRaisesRegex(ValueError, "under scratch/"):
+                run(tools.scratch_append_lines("scratch/out.py", "y = 3"))
+            # Copying reads through the link, so it must not reach outside scratch/ either.
+            with self.assertRaisesRegex(ValueError, "under examples/ or scratch/"):
+                run(tools.scratch_copy_template("scratch/copy.py", source="scratch/out.py"))
+            # Inside scratch/, but the name hides that it is not a .py file.
+            with self.assertRaisesRegex(ValueError, "supports .md and .py"):
+                run(tools.scratch_write_file("scratch/md.py", "x = 2\n"))
+            with self.assertRaisesRegex(ValueError, ".py script"):
+                run(tools.scratch_append_lines("scratch/md.py", "y = 3"))
+
+        self.assertEqual((workspace / "keep.py").read_text(encoding="utf-8"), "x = 1\n")
+        self.assertEqual((workspace / "scratch" / "notes.md").read_text(encoding="utf-8"), "# notes\n")
+
     def test_scratch_to_notebook_deduplicates_repeat_transfer(self):
         tmp, workspace = self._workspace()
         self.addCleanup(tmp.cleanup)
-        repo = Path(__file__).resolve().parents[2]
-        examples = repo / "workspace" / "examples" / "algorithm_examples.py"
         example_dir = workspace / "examples"
         example_dir.mkdir(parents=True, exist_ok=True)
-        (example_dir / "algorithm_examples.py").write_text(
-            examples.read_text(encoding="utf-8"),
-            encoding="utf-8",
-        )
+        (example_dir / "algorithm_examples.py").write_text(ALGORITHM_EXAMPLES, encoding="utf-8")
         (workspace / "scratch").mkdir(parents=True, exist_ok=True)
 
         with patch.dict(os.environ, {"MIP_JUPYTER_ROOT": str(workspace)}):

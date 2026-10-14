@@ -2,7 +2,7 @@
 
 **Read when:** API syntax for filters, preprocessing, pipeline, or results.
 
-**Skip if:** `01` / `02` already covers it. Read [expected_library.md](../../../expected_library.md)
+**Skip if:** `01` / `02` already covers it. Read [expected_library.md](../../../python-client/expected_library.md)
 only when this page is insufficient.
 
 ## Rules
@@ -43,7 +43,7 @@ Use `creator.variable` downstream.
 ## Pipeline
 
 **30** typed methods — full catalog in `07-pipeline-algorithms.md`; smoke test
-`workspace/examples/algorithm_examples.py`.
+`examples/algorithm_examples.py`.
 
 ```python
 pipeline = mip.Pipeline(analysis_set=..., filters=..., handle_missing=..., new_columns=[creator])

@@ -12,9 +12,15 @@ env:
   RETRY_ATTEMPTS: "4"
   RETRY_SLEEP: "10"
 
+# Registries use their own credentials; GITHUB_TOKEN only reads.
+permissions:
+  contents: read
+
 jobs:
   build_and_push:
     name: Build ${{ matrix.image }} image and push to registries
+    # client-v* releases are mip-client packages, not images (see release-client.yml).
+    if: ${{ !startsWith(github.event.release.tag_name, 'client-v') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

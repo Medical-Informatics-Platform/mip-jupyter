@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"maps"
+	"path"
 	"regexp"
 	"slices"
 	"strings"
@@ -37,6 +38,9 @@ const (
 type NotebookReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	// ExamplesClaim, when set and bound in the notebook's namespace, is mounted read-only
+	// at work/.mip-examples in the home of every new notebook.
+	ExamplesClaim string
 }
 
 // +kubebuilder:rbac:groups=notebooks.mip.ebrains.eu,resources=notebooks,verbs=get;list;watch
@@ -74,13 +78,26 @@ func (r *NotebookReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			return ctrl.Result{}, err
 		}
 		pod = buildPod(nb, profile)
+		bound, err := r.examplesBound(ctx, nb.Namespace)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		examples := "not bound"
+		switch {
+		case bound && !profile.Spec.Storage.FixOwnership:
+			// Without fix-home-perm the runtime creates work/ root-owned for the nested mount.
+			examples = "skipped: fixOwnership is false"
+		case bound:
+			addExamples(pod, r.ExamplesClaim, profile.Spec.Storage.MountPath)
+			examples = "mounted"
+		}
 		if err := controllerutil.SetControllerReference(nb, pod, r.Scheme); err != nil {
 			return ctrl.Result{}, err
 		}
 		if err := r.Create(ctx, pod); err != nil && !apierrors.IsAlreadyExists(err) {
 			return ctrl.Result{}, err
 		}
-		log.Info("created notebook pod", "pod", pod.Name)
+		log.Info("created notebook pod", "pod", pod.Name, "examplesClaim", r.ExamplesClaim, "examples", examples)
 		return ctrl.Result{}, r.setStatus(ctx, nb, notebooksv1alpha1.PhasePending, "", "pod created")
 	}
 	if err != nil {
@@ -125,7 +142,9 @@ func (r *NotebookReconciler) ensurePVC(ctx context.Context, nb *notebooksv1alpha
 func buildPod(nb *notebooksv1alpha1.Notebook, profile *notebooksv1alpha1.NotebookProfile) *corev1.Pod {
 	ps := profile.Spec
 
-	env := append([]corev1.EnvVar{}, ps.Env...)
+	// The entrypoint's work dir, on the home volume: fix-home-perm creates it and the
+	// examples mount sits in it. First, so profile or notebook env can still override it.
+	env := append([]corev1.EnvVar{{Name: "MIP_WORK_DIR", Value: path.Join(ps.Storage.MountPath, "work")}}, ps.Env...)
 	for _, k := range slices.Sorted(maps.Keys(nb.Spec.Env)) {
 		env = append(env, corev1.EnvVar{Name: k, Value: nb.Spec.Env[k]})
 	}
@@ -205,6 +224,34 @@ func buildPod(nb *notebooksv1alpha1.Notebook, profile *notebooksv1alpha1.Noteboo
 		}}
 	}
 	return pod
+}
+
+// examplesBound reports whether ns holds the shared examples claim, bound and not being
+// deleted. A missing or unbound claim is false, not an error.
+func (r *NotebookReconciler) examplesBound(ctx context.Context, ns string) (bool, error) {
+	if r.ExamplesClaim == "" {
+		return false, nil
+	}
+	pvc := &corev1.PersistentVolumeClaim{}
+	if err := r.Get(ctx, types.NamespacedName{Namespace: ns, Name: r.ExamplesClaim}, pvc); err != nil {
+		return false, client.IgnoreNotFound(err)
+	}
+	return pvc.DeletionTimestamp.IsZero() && pvc.Status.Phase == corev1.ClaimBound, nil
+}
+
+// addExamples mounts the claim at work/.mip-examples inside the home volume, where the
+// single-user entrypoint links examples/ to it. The runtime creates the mount point, as
+// root, in the parent directory, so work/ must already exist: fix-home-perm creates it.
+func addExamples(pod *corev1.Pod, claim, home string) {
+	pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+		Name: "examples",
+		VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: claim,
+			ReadOnly:  true,
+		}},
+	})
+	c := &pod.Spec.Containers[0]
+	c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{Name: "examples", MountPath: path.Join(home, "work/.mip-examples"), ReadOnly: true})
 }
 
 // podStatus maps a pod to the Notebook phase, proxy URL and spawn message.

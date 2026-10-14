@@ -5,13 +5,16 @@ on:
     branches: [main, master]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
       - name: Install root package and dev deps
@@ -27,14 +30,33 @@ jobs:
       - name: Whitespace check
         run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD
 
+  # The client alone, without the notebook workspace: proves python-client/ stays self-contained.
+  client:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    defaults:
+      run:
+        working-directory: python-client
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: uv sync --extra dev --extra notebook
+      - run: uv run pytest -q
+      - run: uv run python verify_script.py
+      - run: uv build
+
   operator:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: operator
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: operator/go.mod
           cache-dependency-path: operator/go.sum
@@ -47,11 +69,11 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
       # Layer cache in GitHub Actions: only changed layers rebuild (deps layer until uv.lock changes).
       - name: Build notebook image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: docker/singleuser/Dockerfile
@@ -61,7 +83,7 @@ jobs:
           cache-from: type=gha,scope=singleuser
           cache-to: type=gha,scope=singleuser,mode=max
       - name: Build hub image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: docker/hub/Dockerfile
@@ -71,7 +93,7 @@ jobs:
           cache-from: type=gha,scope=hub
           cache-to: type=gha,scope=hub,mode=max
       - name: Build notebook operator image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: operator
           platforms: linux/amd64

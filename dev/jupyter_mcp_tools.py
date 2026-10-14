@@ -104,39 +104,44 @@ def _strip_workspace_prefix(path: str) -> str:
     return parsed.as_posix()
 
 
-def _require_within_workspace(path: Path) -> None:
-    root = _workspace_root()
-    try:
-        path.resolve().relative_to(root)
-    except ValueError as exc:
-        raise ValueError("Path must stay under the Jupyter workspace.") from exc
+def _workspace_file(path: str) -> tuple[Path, Path]:
+    """Return (key, file) for a workspace path.
 
-
-def _workspace_relative_path(path: str) -> Path:
+    key is workspace-relative and unresolved, for prefix checks and messages. file is the
+    resolved path the checks ran on; callers open it, never root / key.
+    """
     raw = str(path or "").strip()
     if not raw:
         raise ValueError("Path is required.")
 
     normalized = _strip_workspace_prefix(raw)
     parsed = PurePosixPath(normalized.replace("\\", "/"))
+    # Absolute paths too: `..` after a link (examples/../) resolves somewhere other than
+    # the key says, and callers' prefix checks run on the key.
+    if any(part == ".." for part in parsed.parts):
+        raise ValueError("Path must not contain '..'.")
+    root = _workspace_root()
     if parsed.is_absolute():
-        candidate = Path(normalized).expanduser().resolve()
-        _require_within_workspace(candidate)
-        relative = candidate.relative_to(_workspace_root())
+        given = Path(normalized).expanduser()
+        candidate = given.resolve()
     else:
-        if any(part == ".." for part in parsed.parts):
-            raise ValueError("Path must not contain '..'.")
-        if any(part in BLOCKED_PATH_PARTS for part in parsed.parts):
-            raise ValueError("Path points to a blocked workspace location.")
         relative = Path(*parsed.parts)
-        candidate = (_workspace_root() / relative).resolve()
-        _require_within_workspace(candidate)
-    return relative
-
-
-def _workspace_file(path: str) -> tuple[Path, Path]:
-    relative = _workspace_relative_path(path)
-    return relative, _workspace_root() / relative
+        candidate = (root / relative).resolve()
+    if not candidate.is_relative_to(root):
+        raise ValueError("Path must stay under the Jupyter workspace.")
+    resolved = candidate.relative_to(root)
+    if parsed.is_absolute():
+        # Key on the unresolved path below the workspace: examples/ links into .mip-examples/,
+        # and callers check the examples/ prefix. Only the part naming the workspace is
+        # resolved, so it may be an alias.
+        workspace = next((p for p in (given, *given.parents) if p.resolve() == root), None)
+        # None: a link from outside the workspace into it; key on where it leads.
+        relative = given.relative_to(workspace) if workspace else resolved
+    # On workspace-relative paths, so a root that itself sits under a blocked name still works;
+    # the resolved one too, so a link cannot lead into a blocked location.
+    if any(part in BLOCKED_PATH_PARTS for part in relative.parts + resolved.parts):
+        raise ValueError("Path points to a blocked workspace location.")
+    return relative, candidate
 
 
 def _server_path(relative_path: Path) -> str:
@@ -666,7 +671,7 @@ async def run_all_cells(path: str, timeout: float = 30.0) -> dict[str, Any]:
 async def open_file(path: str) -> dict[str, Any]:
     """Open a workspace file in the JupyterLab main area."""
 
-    relative = _workspace_relative_path(path)
+    relative = _workspace_file(path)[0]
     try:
         from jupyter_ai_tools.toolkits import jupyterlab
     except ImportError as exc:
@@ -883,24 +888,28 @@ async def mip_algorithm_summary(limit: int = DEFAULT_ALGORITHM_SUMMARY_LIMIT) ->
     )
 
 
+def _under(relative: Path, file_path: Path, folder: str) -> bool:
+    # The resolved file too, so a link inside folder/ cannot lead elsewhere.
+    return relative.as_posix().startswith(f"{folder}/") and file_path.is_relative_to(
+        (_workspace_root() / folder).resolve()
+    )
+
+
 def _scratch_file(path: str) -> tuple[Path, Path]:
-    relative = _workspace_relative_path(path)
-    if not relative.as_posix().startswith("scratch/"):
+    relative, file_path = _workspace_file(path)
+    if not _under(relative, file_path, "scratch"):
         raise ValueError("Scratch paths must stay under scratch/.")
-    if not str(relative).endswith(".py"):
+    if not str(relative).endswith(".py") or file_path.suffix != ".py":
         raise ValueError("Scratch file must be a .py script.")
-    file_path = _workspace_root() / relative
     return relative, file_path
 
 
 def _scratch_copy_source(path: str) -> tuple[Path, Path]:
-    relative = _workspace_relative_path(path)
-    key = relative.as_posix()
-    if not str(relative).endswith(".py"):
+    relative, file_path = _workspace_file(path)
+    if not str(relative).endswith(".py") or file_path.suffix != ".py":
         raise ValueError("Copy source must be a .py script.")
-    if not (key.startswith("examples/") or key.startswith("scratch/")):
+    if not (_under(relative, file_path, "examples") or _under(relative, file_path, "scratch")):
         raise ValueError("Copy source must stay under examples/ or scratch/.")
-    file_path = _workspace_root() / relative
     return relative, file_path
 
 
@@ -1118,12 +1127,11 @@ async def scratch_to_notebook(
 
 
 def _scratch_read_path(path: str) -> tuple[Path, Path]:
-    relative = _workspace_relative_path(path)
-    if not relative.as_posix().startswith("scratch/"):
+    relative, file_path = _workspace_file(path)
+    if not _under(relative, file_path, "scratch"):
         raise ValueError("Scratch read paths must stay under scratch/.")
-    if relative.suffix not in {".md", ".py"}:
+    if relative.suffix not in {".md", ".py"} or file_path.suffix != relative.suffix:
         raise ValueError("Scratch read supports .md and .py files only.")
-    file_path = _workspace_root() / relative
     return relative, file_path
 
 

@@ -15,10 +15,10 @@ Notebooks never call Exaflow directly.
 
 | Area | Audience | Contents |
 |------|----------|----------|
-| `workspace/` | Production Jupyter users | `Welcome.ipynb`, examples, scratch (seeded into `/home/jovyan/work`) |
+| `workspace/` | Production Jupyter users | `Welcome.ipynb` (seeded into `/home/jovyan/work`) |
 | `docs/user/` | Production Jupyter users | User docs (copied to workspace `docs/` at image build) |
 | `docs/llm/` | AI agents | Task-scoped agent wiki (`AGENTS.md` bootstrap) |
-| `python-client/` | Developers | `mip` package source and tests |
+| `python-client/` | Developers | `mip-client` package (import `mip`), source and tests |
 | `docker/` | Operators | Single-user and Hub image definitions |
 | `dev/` | Local developers | JupyterLab runner with Codex/MCP |
 | `docs/` (root) | Operators, developers | Architecture, release process, operators guide |
@@ -36,6 +36,20 @@ The single-user Docker image:
 5. Starts JupyterLab with root `/home/jovyan/work` and default URL `Welcome.ipynb`.
 
 Deployment artifacts (Dockerfiles, Hub config, client source, agent wiki) are not copied into the user workspace.
+
+The examples are not in the image either. They live in
+[`mip-examples`](https://github.com/Medical-Informatics-Platform/mip-examples). In MIP
+clusters each federation namespace has a claim `mip-examples` and a `mip-examples-sync`
+CronJob that checks `master` every minute and, when it moved, clones it onto that claim and
+swaps it in atomically; the notebook operator mounts the claim read-only at
+`/home/jovyan/work/.mip-examples` (`EXAMPLES_CLAIM`, see
+[notebook-operator.md](notebook-operator.md)). The infra side is
+[`common/examples`](https://github.com/Medical-Informatics-Platform/mip-infra-staging/tree/main/common/examples)
+in mip-infra-staging (production mip-infra follows). On start, the entrypoint links `examples` to `.mip-examples/examples`.
+Without the mount (KubeSpawner, local runs) it only removes a dangling link: a
+real `examples/` copied by older images stays as a frozen copy, and a new home
+has no `examples/`. A merge to
+mip-examples reaches running notebooks in about a minute, with no image build.
 
 ## Local development
 

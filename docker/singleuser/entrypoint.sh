@@ -13,13 +13,22 @@ if [ ! -f "${WORK}/Welcome.ipynb" ]; then
   cp -a "${TEMPLATE}/." "${WORK}/"
 fi
 
-# Existing homes skip the copy above; give them examples added since, never
-# overwriting a file the user already has (they may have edited it).
-mkdir -p "${WORK}/examples"
-for example in "${TEMPLATE}"/examples/*; do
-  [ -e "${example}" ] || continue
-  [ -e "${WORK}/examples/${example##*/}" ] || cp -a "${example}" "${WORK}/examples/"
-done
+# Shared read-only examples, mounted by the notebook operator. The link is relative, so
+# resolved paths stay under the workspace (jupyter-mcp refuses anything outside it).
+# Keyed on the mount, not on its contents: the volume may still be empty or mid-sync,
+# and the link starts working once examples/ appears in it. A leftover mount point
+# from an earlier pod is a plain directory, so it counts as gone.
+if mountpoint -q "${WORK}/.mip-examples"; then
+  if [ ! -L "${WORK}/examples" ]; then
+    if [ -e "${WORK}/examples" ]; then
+      # A fresh name, so mv never moves examples/ into an existing directory.
+      mv "${WORK}/examples" "${WORK}/examples-old-$(date +%s)"
+    fi
+    ln -s .mip-examples/examples "${WORK}/examples"
+  fi
+elif [ -L "${WORK}/examples" ]; then
+  rm "${WORK}/examples"
+fi
 
 export MIP_JUPYTER_ROOT="${WORK}"
 export MIP_AGENT_DOCS="${MIP_AGENT_DOCS:-/opt/mip-agent-docs}"
@@ -37,9 +46,10 @@ fi
 
 default_notebook="${MIP_NOTEBOOK:-Welcome.ipynb}"
 
-hub_args=""
+# Optional hub flag goes in "$@" so it stays one quoted word (or none).
+set --
 if [ -n "${JUPYTERHUB_SERVICE_PREFIX:-}" ]; then
-  hub_args="--ServerApp.base_url=${JUPYTERHUB_SERVICE_PREFIX}"
+  set -- "--ServerApp.base_url=${JUPYTERHUB_SERVICE_PREFIX}"
   default_url="lab/tree/${default_notebook}"
 else
   default_url="/lab/tree/${default_notebook}"
@@ -52,7 +62,7 @@ exec jupyter lab \
   --ServerApp.token="${JUPYTER_TOKEN:-}" \
   --ServerApp.root_dir="${WORK}" \
   --ServerApp.default_url="${default_url}" \
-  ${hub_args} \
+  "$@" \
   --YDocExtension.disable_rtc=True \
   --ServerApp.websocket_ping_interval=30000 \
   --ServerApp.websocket_ping_timeout=30000 \

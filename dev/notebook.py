@@ -34,7 +34,7 @@ from .mip_acp_persona import MIP_PERSONA_NAME
 DEFAULT_BACKEND_URL = "http://127.0.0.1:8080/services"
 DEFAULT_TOKEN = "dev"
 # Paths are relative to ServerApp.root_dir (= workspace/), matching production.
-DEFAULT_NOTEBOOK = "examples/feres_analysis.ipynb"
+DEFAULT_NOTEBOOK = "Welcome.ipynb"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8888
 

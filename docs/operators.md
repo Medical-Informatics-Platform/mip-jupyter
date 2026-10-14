@@ -84,11 +84,13 @@ Full checklist: [`release-process.md`](release-process.md).
 - **Image tags in Hub** — update `JUPYTER_SINGLEUSER_IMAGE` in deployment values or `docker/hub/jupyterhub_config.py`
 - **Keycloak / auth** — `mip/deployment` (Hub refuses to start without `KEYCLOAK_CLIENT_ID`; `JUPYTERHUB_USE_DUMMY_AUTH=1` enables dummy auth for local testing only)
 - **Platform token refresh** — Hub `platform_token_service.py`; validate in deployment integration tests
+- **Shared examples** — `EXAMPLES_CLAIM` on the notebook operator; bound-volume rule and rollback in [`notebook-operator.md`](notebook-operator.md)
 
 ## Smoke test after rollout
 
 1. User logs in via Hub and lands on `Welcome.ipynb`.
 2. `import mip` and `mip.Client.from_env()` succeed.
-3. File browser shows `Welcome.ipynb`, `examples/`, `docs/`, `scratch/` only.
+3. File browser shows `Welcome.ipynb`, `docs/`, `scratch/` only, plus `examples/`
+   when the cluster mounts the shared examples.
 4. `docs/llm/` and `python-client/` are **not** visible to users.
 5. Jupyter AI agents can call `agent_read_guide` (reads `/opt/mip-agent-docs/`).

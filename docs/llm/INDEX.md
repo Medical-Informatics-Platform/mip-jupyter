@@ -47,7 +47,7 @@ Never bare `read-guide` and never `find`/`grep` the wiki tree.
 | Stroke / novel stroke | `recipes/stroke-analysis` only | `novel` |
 | Client / tests / commits | `dev-contributor` | — |
 
-Full API contract: [expected_library.md](../../expected_library.md) — not on startup.
+Full API contract: [expected_library.md](../../python-client/expected_library.md) — not on startup.
 
 ## Wiki page rules
 

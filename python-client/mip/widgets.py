@@ -75,7 +75,7 @@ def browse_analysis_set(
         [
             widgets.HTML(
                 f"<strong>Browse {getattr(data_model, 'name', data_model)}</strong>"
-                "<div style='color:#666;font-size:12px'>Optional interactive picker (ipywidgets).</div>"
+                + "<div style='color:#666;font-size:12px'>Optional interactive picker (ipywidgets).</div>"
             ),
             dataset_select,
             variable_search,

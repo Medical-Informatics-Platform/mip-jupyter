@@ -60,8 +60,9 @@ func main() {
 	}
 
 	if err := (&controller.NotebookReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		ExamplesClaim: os.Getenv("EXAMPLES_CLAIM"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Notebook")
 		os.Exit(1)
