@@ -173,13 +173,11 @@ var _ = Describe("Notebook controller", func() {
 		})
 
 		// No PV controller runs under envtest, so the test binds the claim itself.
-		examplesClaim := func(volume string, bound bool) {
+		examplesClaim := func(bound bool) {
 			pvc := &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{Name: "mip-examples", Namespace: ns},
 				Spec: corev1.PersistentVolumeClaimSpec{
-					AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadOnlyMany},
-					StorageClassName: ptr.To(""),
-					VolumeName:       volume,
+					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
 					},
@@ -205,8 +203,8 @@ var _ = Describe("Notebook controller", func() {
 			return nb, pod
 		}
 
-		It("mounts a claim bound to mip-examples-<ns> read-only", func() {
-			examplesClaim("mip-examples-"+ns, true)
+		It("mounts a bound claim read-only", func() {
+			examplesClaim(true)
 			_, pod := spawn(true, "")
 			Expect(pod.Spec.Volumes).To(ContainElement(corev1.Volume{
 				Name: "examples",
@@ -219,7 +217,7 @@ var _ = Describe("Notebook controller", func() {
 				corev1.VolumeMount{Name: "examples", MountPath: "/home/jovyan/work/.mip-examples", ReadOnly: true}))
 		})
 		It("mounts inside the profile's home", func() {
-			examplesClaim("mip-examples-"+ns, true)
+			examplesClaim(true)
 			_, pod := spawn(true, "/home/user")
 			Expect(pod.Spec.Containers[0].VolumeMounts).To(ContainElement(
 				corev1.VolumeMount{Name: "examples", MountPath: "/home/user/work/.mip-examples", ReadOnly: true}))
@@ -230,24 +228,19 @@ var _ = Describe("Notebook controller", func() {
 			Expect(pod.Spec.Volumes[0].Name).To(Equal(homeVolume))
 			Expect(fetch(nb).Status.Phase).To(Equal(notebooksv1alpha1.PhasePending))
 		})
-		It("ignores a claim bound to another volume", func() {
-			examplesClaim("other", true)
-			_, pod := spawn(true, "")
-			Expect(pod.Spec.Volumes).To(HaveLen(1))
-		})
 		It("ignores a claim that is not bound", func() {
-			examplesClaim("mip-examples-"+ns, false)
+			examplesClaim(false)
 			_, pod := spawn(true, "")
 			Expect(pod.Spec.Volumes).To(HaveLen(1))
 		})
 		It("does nothing without EXAMPLES_CLAIM", func() {
 			reconciler.ExamplesClaim = ""
-			examplesClaim("mip-examples-"+ns, true)
+			examplesClaim(true)
 			_, pod := spawn(true, "")
 			Expect(pod.Spec.Volumes).To(HaveLen(1))
 		})
 		It("needs fixOwnership, so work/ exists before the mount", func() {
-			examplesClaim("mip-examples-"+ns, true)
+			examplesClaim(true)
 			_, pod := spawn(false, "")
 			Expect(pod.Spec.Volumes).To(HaveLen(1))
 		})

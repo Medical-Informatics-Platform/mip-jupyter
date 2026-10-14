@@ -93,10 +93,10 @@ Shared examples (optional): with `EXAMPLES_CLAIM` set (mip-infra uses
 `mip-examples`), every new notebook pod mounts that claim read-only at
 `work/.mip-examples` under the profile's `storage.mountPath`, where the
 single-user entrypoint links `examples/` to it. The mount is added only when the
-claim in the notebook's namespace is `Bound` to the PV `<claim>-<namespace>` and
+claim in the notebook's namespace is `Bound` (and not being deleted) and
 the profile sets `fixOwnership: true` (its init container creates `work/`, so the
-runtime does not create it as root for the mount point). A missing, unbound or
-foreign claim is skipped and the notebook starts without examples; other API
+runtime does not create it as root for the mount point). A missing or unbound
+claim is skipped and the notebook starts without examples; other API
 errors retry the reconcile. A claim pruned between that check and pod creation
 leaves the pod `Pending` until the notebook is recreated. The decision is in the
 "created notebook pod" log line. Rollback: unset `EXAMPLES_CLAIM`, and new

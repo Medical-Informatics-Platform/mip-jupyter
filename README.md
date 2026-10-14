@@ -51,7 +51,7 @@ Recommended starting path:
 
 1. Open `Welcome.ipynb` and run all cells.
 2. Read `docs/quickstart.md` for the basic workflow.
-3. Use `examples/feres_analysis.ipynb` as a reference analysis (read-only;
+3. Use `examples/FERES/feres_analysis.ipynb` as a reference analysis (read-only;
    *File > Save Notebook As* into `scratch/` to adapt it).
 4. Save personal notebooks and experiments under `scratch/`.
 
@@ -78,7 +78,7 @@ Open a different notebook (the examples need a mip-examples checkout in
 `workspace/examples/`, which git ignores):
 
 ```bash
-MIP_NOTEBOOK=examples/feres_analysis.ipynb uv run mip-notebook
+MIP_NOTEBOOK=examples/FERES/feres_analysis.ipynb uv run mip-notebook
 ```
 
 ## Build and Test

@@ -18,7 +18,7 @@ Self-contained for stroke stats — do not chain `02`/`03`/`04` on startup.
 8. `jupyter-mcp scratch-to-notebook` → `notebook-outline` → `open-file`
 9. Primary report: **adjusted logistic OR (95% CI)**; secondary p-values exploratory
 
-Patterns: `examples/feres_analysis.ipynb`, `examples/algorithm_examples.py`.
+Patterns: `examples/FERES/feres_analysis.ipynb`, `examples/algorithm_examples.py`.
 
 ## Guardrails
 

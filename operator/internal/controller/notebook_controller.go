@@ -38,8 +38,8 @@ const (
 type NotebookReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	// ExamplesClaim, when set, is mounted read-only at work/.mip-examples in the home of
-	// every new notebook, but only if that claim is bound to the PV <claim>-<namespace>.
+	// ExamplesClaim, when set and bound in the notebook's namespace, is mounted read-only
+	// at work/.mip-examples in the home of every new notebook.
 	ExamplesClaim string
 }
 
@@ -224,8 +224,8 @@ func buildPod(nb *notebooksv1alpha1.Notebook, profile *notebooksv1alpha1.Noteboo
 	return pod
 }
 
-// examplesBound reports whether ns holds the shared examples claim, bound to the volume the
-// infra made for this namespace. A missing, unbound or foreign claim is false, not an error.
+// examplesBound reports whether ns holds the shared examples claim, bound and not being
+// deleted. A missing or unbound claim is false, not an error.
 func (r *NotebookReconciler) examplesBound(ctx context.Context, ns string) (bool, error) {
 	if r.ExamplesClaim == "" {
 		return false, nil
@@ -234,9 +234,7 @@ func (r *NotebookReconciler) examplesBound(ctx context.Context, ns string) (bool
 	if err := r.Get(ctx, types.NamespacedName{Namespace: ns, Name: r.ExamplesClaim}, pvc); err != nil {
 		return false, client.IgnoreNotFound(err)
 	}
-	return pvc.DeletionTimestamp.IsZero() &&
-		pvc.Status.Phase == corev1.ClaimBound &&
-		pvc.Spec.VolumeName == r.ExamplesClaim+"-"+ns, nil
+	return pvc.DeletionTimestamp.IsZero() && pvc.Status.Phase == corev1.ClaimBound, nil
 }
 
 // addExamples mounts the claim at work/.mip-examples inside the home volume, where the

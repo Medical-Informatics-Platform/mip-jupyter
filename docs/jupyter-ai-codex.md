@@ -24,7 +24,7 @@ Open (the examples come from mip-examples; locally, clone it into
 `workspace/examples/`, which git ignores):
 
 ```text
-http://127.0.0.1:8888/lab/tree/examples/feres_analysis.ipynb?token=dev
+http://127.0.0.1:8888/lab/tree/examples/FERES/feres_analysis.ipynb?token=dev
 ```
 
 ## Install Codex ACP
@@ -130,7 +130,7 @@ is accepted, and one we do not ship defaults to the budgets above.
 If the shell bridge regresses, native MCP forwarding should remain disabled for this endpoint. Verify the MCP server directly with:
 
 ```bash
-python -m dev.jupyter_mcp_cli notebook-outline examples/feres_analysis.ipynb
+python -m dev.jupyter_mcp_cli notebook-outline examples/FERES/feres_analysis.ipynb
 ```
 
 For parallel local JupyterLab instances, use a different JupyterLab port. The runner chooses a free MCP port automatically unless `JUPYTER_MCP_PORT` or `--mcp-port` is set:
@@ -203,7 +203,7 @@ The production single-user image seeds `workspace/` and `docs/user/` into `/home
 2. Open the chat panel from the left sidebar, or create a chat from the launcher.
 3. Type `@` in the chat input and verify that **Cohort Scout** appears in the persona menu.
    Stock Jupyter AI ACP personas such as Codex, Claude, and Copilot are hidden; Cohort Scout is the only available persona.
-4. Use one of the existing notebooks as context, for example `examples/feres_analysis.ipynb` (locally, a mip-examples checkout in `workspace/examples/`) or `workspace/Welcome.ipynb`.
+4. Use one of the existing notebooks as context, for example `examples/FERES/feres_analysis.ipynb` (locally, a mip-examples checkout in `workspace/examples/`) or `workspace/Welcome.ipynb`.
 5. Send one of these prompts:
 
 ```text
