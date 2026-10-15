@@ -1,6 +1,8 @@
 name: Release mip-client
 
-# Every release also ships the client, at the release's version, on the same release.
+# Every release also publishes the client to PyPI, at the release's version.
+# Published GitHub releases are immutable, so the wheel and sdist go to PyPI instead of
+# being attached to the release.
 on:
   release:
     types: [published]
@@ -10,11 +12,13 @@ jobs:
     # Pre-releases (e.g. 0.1.2_candidate) are image candidates only.
     if: ${{ !github.event.release.prerelease }}
     runs-on: ubuntu-latest
+    # PyPI trusted publishing: the PyPI project trusts this repository, workflow and environment.
+    environment:
+      name: pypi
+      url: https://pypi.org/project/mip-client/${{ github.event.release.tag_name }}/
     permissions:
-      contents: write
-    defaults:
-      run:
-        working-directory: python-client
+      contents: read
+      id-token: write
     env:
       TAG: ${{ github.event.release.tag_name }}
     steps:
@@ -22,8 +26,9 @@ jobs:
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
       # Fail if the tag and python-client/pyproject.toml disagree.
       - run: test "$(uv version --short)" = "$TAG"
-      - run: uv build
-      # Release assets are immutable, so consumers can lock their hashes.
-      - run: gh release upload "$TAG" dist/*
-        env:
-          GH_TOKEN: ${{ github.token }}
+        working-directory: python-client
+      - run: uv build --out-dir dist
+        working-directory: python-client
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: python-client/dist/
