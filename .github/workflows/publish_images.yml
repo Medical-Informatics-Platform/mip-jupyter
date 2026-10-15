@@ -19,8 +19,6 @@ permissions:
 jobs:
   build_and_push:
     name: Build ${{ matrix.image }} image and push to registries
-    # client-v* releases are mip-client packages, not images (see release-client.yml).
-    if: ${{ !startsWith(github.event.release.tag_name, 'client-v') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

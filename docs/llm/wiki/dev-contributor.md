@@ -10,7 +10,7 @@
 - `examples/` — not in this repo: the examples (e.g. `feres_analysis.ipynb`) live in
   `Medical-Informatics-Platform/mip-examples`; clone it into `workspace/examples/` (git-ignored) for local runs
 - `docs/user/` — canonical user documentation (shipped to workspace `docs/`)
-- `python-client/` — the `mip-client` package (import `mip`); self-contained, released with `client-v*` tags
+- `python-client/` — the `mip-client` package (import `mip`); self-contained, released with every mip-jupyter release, at its version
 - `python-client/tests/` — client unit tests; workspace checks (docs, notebook, jupyter-mcp) live in `dev/`
 - `python-client/expected_library.md` — public API contract exercised by `workspace/Welcome.ipynb`
 

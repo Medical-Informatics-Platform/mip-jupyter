@@ -2,7 +2,7 @@
 
 ## Versioning
 
-- `python-client/` (`mip-client` package, import `mip`) carries its own version in `pyproject.toml` and is released with `client-v*` tags (see `python-client/README.md`). Image releases ignore those tags.
+- `python-client/` (`mip-client` package, import `mip`) is released with every release, at the release's version: set `version` in `python-client/pyproject.toml` to the release tag and run `uv lock` before publishing (see `python-client/README.md`). Pre-releases ship images only.
 - Container images are tagged separately (for example `hbpmip/mip-jupyter:dev`).
 
 ## Build checklist
@@ -37,7 +37,7 @@ GitHub Actions workflows in `.github/workflows/`:
 
 ## Publishing
 
-Publishing a GitHub release runs `publish_images.yml`. It builds and pushes all three images, tagged with the release tag, to Docker Hub and EBRAINS Harbor:
+Publishing a GitHub release runs `release-client.yml`, which attaches the `mip-client` wheel and sdist to the release, and `publish_images.yml`, which builds and pushes all three images, tagged with the release tag, to Docker Hub and EBRAINS Harbor:
 
 - `hbpmip/mip-jupyter` (single-user)
 - `hbpmip/mip-jupyterhub` (Hub)

@@ -10,9 +10,11 @@ own. Tests that check the notebook workspace live in `dev/`.
 ## Install
 
 ```bash
-python3 -m pip install "mip-client[notebook] @ git+https://github.com/Medical-Informatics-Platform/mip-jupyter@client-v0.1.0#subdirectory=python-client"
+python3 -m pip install "mip-client[notebook] @ git+https://github.com/Medical-Informatics-Platform/mip-jupyter@<version>#subdirectory=python-client"
 ```
 
+`<version>` is a mip-jupyter release tag (the first with the client is the
+release after 0.2.0); its wheel and sdist are also attached to that release.
 Drop `[notebook]` outside Jupyter.
 
 For development, `uv sync --extra dev` at the repository root installs this
@@ -74,8 +76,10 @@ uv run python verify_script.py
 
 ## Release
 
-Client releases are tagged `client-v<version>`, separately from image releases.
+The client ships with every mip-jupyter release, at the release's version.
 
-1. Bump `version` in `pyproject.toml`, then run `uv lock` at the repository root.
-2. Tag `client-v<version>` and push the tag. The release workflow attaches the
-   wheel and sdist to a GitHub release.
+1. Before the release, set `version` in `pyproject.toml` to the release tag
+   (for example `0.3.0`), then run `uv lock` at the repository root, and commit.
+2. Publish the GitHub release. The release workflow fails if the tag and
+   `version` disagree, and otherwise attaches the wheel and sdist to the release.
+   Pre-releases ship images only.
