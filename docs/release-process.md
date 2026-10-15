@@ -37,10 +37,10 @@ GitHub Actions workflows in `.github/workflows/`:
 
 ## Publishing
 
-Publishing a GitHub release runs `release-client.yml`, which attaches the `mip-client` wheel and sdist to the release, and `publish_images.yml`, which builds and pushes all three images, tagged with the release tag, to Docker Hub and EBRAINS Harbor:
+Publishing a GitHub release runs `release-client.yml`, which publishes the `mip-client` wheel and sdist to [PyPI](https://pypi.org/project/mip-client/) (releases are immutable, so assets cannot be attached after publishing), and `publish_images.yml`, which builds and pushes all three images, tagged with the release tag, to Docker Hub and EBRAINS Harbor:
 
 - `hbpmip/mip-jupyter` (single-user)
 - `hbpmip/mip-jupyterhub` (Hub)
 - `hbpmip/mip-notebook-operator`
 
-Harbor copies live under `docker-registry.ebrains.eu/medical-informatics-platform/`. Required repository secrets: `DOCKER_USERNAME`, `DOCKER_PASSWORD`, `HARBOR_USERNAME`, `HARBOR_PASSWORD`. Update `docker/hub/jupyterhub_config.py` image references when rolling out a new single-user tag.
+Harbor copies live under `docker-registry.ebrains.eu/medical-informatics-platform/`. Required repository secrets: `DOCKER_USERNAME`, `DOCKER_PASSWORD`, `HARBOR_USERNAME`, `HARBOR_PASSWORD`. PyPI needs no secret: the `mip-client` project on pypi.org has a trusted publisher for this repository, workflow `release-client.yml`, environment `pypi`. Update `docker/hub/jupyterhub_config.py` image references when rolling out a new single-user tag.
