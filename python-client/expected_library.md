@@ -7,7 +7,7 @@ Contract for the `mip` library (distribution `mip-client`), used from Jupyter no
 - The Python library is a thin client over `platform-backend`.
 - Notebook code calls `platform-backend` only, not Exaflow directly.
 - Data model discovery comes from backend data-model DTOs.
-- Algorithm execution defaults to `/experiments/transient`; persisted execution uses `/experiments`.
+- Algorithm execution defaults to `/experiments/preview`; persisted execution runs via `/experiments/runs` and saves the run via `/experiments`.
 - Search/list APIs return native Python lists.
 - No `.table()` API exists.
 
@@ -27,7 +27,7 @@ Contract for the `mip` library (distribution `mip-client`), used from Jupyter no
 | Fixed Pipeline flow | Selection -> filters -> missing handling -> outlier handling -> new_columns -> algorithm. |
 | Experiment payload | `analysis: AnalysisRequestDTO` with ordered `preprocessing` array and `inputdata.variables`. |
 | Algorithm methods | `describe`, `histogram`, `t_test`, `pearson_correlation`, `chi_square_test`, `logistic_regression`. |
-| Execution endpoints | `mode="transient"` posts `/experiments/transient`; `mode="persisted"` posts `/experiments`. |
+| Execution endpoints | `mode="transient"` posts `/experiments/preview`; `mode="persisted"` posts `/experiments/runs`, then `/experiments` with `{runId, name}` on success. |
 | Preprocessing shape | Ordered preprocessing steps; strategy dictionaries keyed by variable code. |
 | Results | `Result` and `ModelResult` expose `summary()`, `raw`, and `payload`; no enrichment APIs. |
 | sklearn export | Implemented in `mip.sklearn` and exposed via `ModelResult.to_sklearn()`. |
@@ -327,9 +327,11 @@ The experiment registry is for persisted experiment management. Pipeline executi
 All `AnalysisSet` and `Pipeline` execution methods default to transient execution:
 
 ```python
-pipeline.histogram(variable=mmse)                  # POST /experiments/transient
-pipeline.histogram(variable=mmse, mode="persisted") # POST /experiments
+pipeline.histogram(variable=mmse)                  # POST /experiments/preview
+pipeline.histogram(variable=mmse, mode="persisted") # POST /experiments/runs, then POST /experiments {runId, name}
 ```
+
+Persisted execution saves only successful runs. `result.payload["uuid"]` is the saved experiment id, and `result.raw` is the run's result.
 
 ## Results
 

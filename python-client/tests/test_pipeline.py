@@ -49,7 +49,8 @@ class TestPipeline(unittest.TestCase):
 
         endpoint, payload = transport.post.call_args.args
         analysis = payload["analysis"]
-        self.assertEqual(endpoint, "/experiments/transient")
+        self.assertEqual(endpoint, "/experiments/preview")
+        transport.post.assert_called_once()
         self.assertEqual(analysis["algorithm"]["name"], "histogram")
         self.assertEqual(analysis["algorithm"]["y"], ["mmse"])
         self.assertEqual(analysis["algorithm"]["parameters"], {"bins": 20})
@@ -63,9 +64,13 @@ class TestPipeline(unittest.TestCase):
         self.assertNotIn("mipVersion", payload)
         self.assertEqual(result.raw, {"bins": [1, 2], "counts": [3, 4]})
 
-    def test_logistic_regression_uses_persisted_endpoint(self):
+    def test_logistic_regression_persisted_runs_then_saves(self):
+        model = {"summary": {"feature_names": ["Intercept", "age"], "coefficients": [0.1, 0.5]}}
         transport = MagicMock()
-        transport.post.return_value = {"status": "success", "result": {"summary": {"feature_names": ["Intercept", "age"], "coefficients": [0.1, 0.5]}}}
+        transport.post.side_effect = [
+            {"uuid": "run-1", "status": "success", "result": model},
+            {"uuid": "exp-1", "name": "logistic_regression", "status": "success", "result": None},
+        ]
         dm = _dm(transport)
         age = Var("age", label="Age")
         diagnosis = Var("diagnosis", label="Diagnosis")
@@ -73,13 +78,31 @@ class TestPipeline(unittest.TestCase):
 
         result = Pipeline(analysis_set=analysis_set).logistic_regression(x=[age], y=diagnosis, positive_class="AD", mode="persisted")
 
-        endpoint, payload = transport.post.call_args.args
+        (run_endpoint, payload), (save_endpoint, save_body) = [c.args for c in transport.post.call_args_list]
         analysis = payload["analysis"]
-        self.assertEqual(endpoint, "/experiments")
+        self.assertEqual(run_endpoint, "/experiments/runs")
         self.assertEqual(analysis["algorithm"]["name"], "logistic_regression")
         self.assertEqual(analysis["algorithm"]["x"], ["age"])
         self.assertEqual(analysis["algorithm"]["y"], ["diagnosis"])
+        self.assertEqual(save_endpoint, "/experiments")
+        self.assertEqual(save_body, {"runId": "run-1", "name": payload["name"]})
         self.assertEqual(result.result_type, "logistic_regression")
+        self.assertEqual(result.raw, model)
+        self.assertEqual(result.payload["uuid"], "exp-1")
+        self.assertEqual(result.payload["result"], model)
+
+    def test_persisted_run_error_is_not_saved(self):
+        transport = MagicMock()
+        transport.post.return_value = {"uuid": "run-1", "status": "error", "result": {"error": "boom"}}
+        dm = _dm(transport)
+        mmse = Var("mmse", label="MMSE")
+        analysis_set = AnalysisSet(data_model=dm, datasets=[_dataset("adni", "ADNI")], variables=[mmse])
+
+        with self.assertRaisesRegex(Exception, "boom"):
+            Pipeline(analysis_set=analysis_set).histogram(variable=mmse, mode="persisted")
+
+        transport.post.assert_called_once()
+        self.assertEqual(transport.post.call_args.args[0], "/experiments/runs")
 
     def test_t_test_serializes_required_backend_parameters(self):
         transport = MagicMock()
