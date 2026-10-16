@@ -24,6 +24,8 @@ class Transport:
         *,
         timeout: float = 30.0,
         allow_redirects: bool | None = None,
+        hub_api_url: str | None = None,
+        hub_api_token: str | None = None,
     ):
         if not isinstance(base_url, str) or not base_url.strip():
             raise ValueError("base_url must be a non-empty string.")
@@ -33,6 +35,9 @@ class Transport:
         if allow_redirects is None:
             allow_redirects = os.getenv("PLATFORM_BACKEND_ALLOW_REDIRECTS", "0") in ("1", "true", "True")
         self.allow_redirects = bool(allow_redirects)
+        # The hub hands out fresh platform tokens; in a notebook it is configured by env.
+        self.hub_api_url = (hub_api_url or os.getenv("JUPYTERHUB_API_URL", "")).rstrip("/")
+        self.hub_api_token = hub_api_token or os.getenv("JUPYTERHUB_API_TOKEN", "")
         self.session = requests.Session()
         if token:
             self.session.headers.update({"Authorization": f"Bearer {token}"})
@@ -115,21 +120,30 @@ class Transport:
             )
 
     def _maybe_refresh_token_via_jupyterhub(self) -> bool:
-        api_url = os.getenv("JUPYTERHUB_API_URL", "").rstrip("/")
-        api_token = os.getenv("JUPYTERHUB_API_TOKEN", "")
-        if not api_url or not api_token:
+        if not self.hub_api_url or not self.hub_api_token:
             return False
-        url = f"{api_url}/platform-token"
+        url = f"{self.hub_api_url}/platform-token"
         try:
             response = requests.get(
                 url,
-                headers={"Authorization": f"token {api_token}"},
+                headers={"Authorization": f"token {self.hub_api_token}"},
                 timeout=min(self.timeout, 15.0),
                 allow_redirects=False,
             )
         except requests.RequestException:
             return False
-        # Errors and 3xx alike: redirects are not followed, and a 3xx means the hub wants a login.
+        if response.status_code == 403:
+            raise MipBackendError(
+                "JupyterHub rejected the API token: it is invalid, expired, revoked or missing "
+                "the custom:mip-platform-token permission. If the token is fine, open the "
+                "Notebook page in the MIP portal once to sign in, then retry."
+            )
+        if response.status_code == 401:
+            raise MipBackendError(
+                "JupyterHub has no MIP platform token for you. Open the Notebook page in "
+                "the MIP portal once to sign in, then retry."
+            )
+        # Other errors and 3xx alike: redirects are not followed, and a 3xx means the hub wants a login.
         if response.status_code != 200:
             return False
         try:
