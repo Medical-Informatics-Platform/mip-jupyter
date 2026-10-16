@@ -17,7 +17,7 @@ Notebooks never call Exaflow directly.
 |------|----------|----------|
 | `workspace/` | Production Jupyter users | `Welcome.ipynb` (seeded into `/home/jovyan/work`) |
 | `docs/user/` | Production Jupyter users | User docs (copied to workspace `docs/` at image build) |
-| `docs/llm/` | AI agents | Task-scoped agent wiki (`AGENTS.md` bootstrap) |
+| `python-client/mip/agent_docs/` | AI agents | Task-scoped agent wiki (`AGENTS.md` bootstrap) |
 | `python-client/` | Developers | `mip-client` package (import `mip`), source and tests |
 | `docker/` | Operators | Single-user and Hub image definitions |
 | `dev/` | Local developers | JupyterLab runner with Codex/MCP |
@@ -31,7 +31,7 @@ The single-user Docker image:
 
 1. Installs `mip` from `python-client/` as a Python package during build.
 2. Copies `workspace/` to `/opt/mip-workspace-template/` and `docs/user/` to `.../docs/`.
-3. Copies `docs/llm/` and `AGENTS.md` to `/opt/mip-agent-docs/` (not exposed in the file browser).
+3. Copies `python-client/mip/agent_docs/` and `AGENTS.md` to `/opt/mip-agent-docs/` (not exposed in the file browser).
 4. On container start, seeds `/home/jovyan/work` from the template when `Welcome.ipynb` is absent.
 5. Starts JupyterLab with root `/home/jovyan/work` and default URL `Welcome.ipynb`.
 

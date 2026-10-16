@@ -173,7 +173,7 @@ Jupyter AI Codex is steered by a layered wiki instead of ad-hoc repo exploration
 
 - **Production Codex:** `read-guide` reads the default workspace guide or an allowlisted routed page from `/opt/mip-agent-docs/`; `search-docs` searches user docs in workspace `docs/`.
 - [`AGENTS.md`](../AGENTS.md) — repository bootstrap entry point for Cursor and IDE agents
-- [`docs/llm/INDEX.md`](../docs/llm/INDEX.md) — wiki map and task routing table
+- [`python-client/mip/agent_docs/INDEX.md`](../python-client/mip/agent_docs/INDEX.md) — wiki map and task routing table
 - [`docs/user/`](../docs/user/) — canonical user documentation (shipped to workspace `docs/`)
 
 The notebook runner injects slim `base_instructions` in the generated Codex model

@@ -174,11 +174,11 @@ def expected_first_guide(case: EvalCase) -> dict[str, Any]:
 
 
 def measure_topic_savings(page: str, topic: str) -> dict[str, Any]:
-    """Compare full-page vs topic-scoped guide bytes (uses repo agent docs)."""
+    """Compare full-page vs topic-scoped guide bytes (uses the packaged agent docs)."""
 
     repo = Path(__file__).resolve().parents[1]
     env = {
-        "MIP_AGENT_DOCS": str(repo),
+        "MIP_AGENT_DOCS": "",
         "MIP_JUPYTER_ROOT": str(repo / "workspace"),
     }
     previous = {key: os.environ.get(key) for key in env}
