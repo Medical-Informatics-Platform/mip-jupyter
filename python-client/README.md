@@ -36,6 +36,14 @@ JupyterHub API token with the `custom:mip-platform-token` permission, created at
 `https://<host>/notebook/hub/token`. See
 [Use MIP from your own computer](https://github.com/Medical-Informatics-Platform/mip-jupyter/blob/master/docs/user/remote-access.md).
 
+## `mip` command for AI assistants
+
+`mip guide`, `mip env-status`, `mip catalog`, `mip data-model LABEL`,
+`mip search-variables LABEL TEXT` and `mip algorithms` print compact JSON for AI
+assistants. `mip agent init` writes an `AGENTS.md` that routes an assistant to
+them. The guide pages ship in `mip/agent_docs/`; the code is in `mip/agent.py` and
+`mip/cli.py`.
+
 ## API overview
 
 | Object | Purpose |
