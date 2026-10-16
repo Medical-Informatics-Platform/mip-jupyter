@@ -31,6 +31,11 @@ uv sync --extra dev --extra notebook
 `mip.Client.from_env()` reads `PLATFORM_BACKEND_URL` (for example
 `https://<host>/services`) and `MIP_TOKEN`.
 
+From your own computer, set `MIP_URL=https://<host>` and `MIP_API_TOKEN` to a
+JupyterHub API token with the `custom:mip-platform-token` permission, created at
+`https://<host>/notebook/hub/token`. See
+[Use MIP from your own computer](https://github.com/Medical-Informatics-Platform/mip-jupyter/blob/master/docs/user/remote-access.md).
+
 ## API overview
 
 | Object | Purpose |

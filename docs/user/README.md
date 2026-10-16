@@ -20,6 +20,7 @@ Welcome to the Medical Informatics Platform (MIP) Jupyter workspace. The `mip` P
 - [API reference](api-reference.md) — filters, preprocessing, pipeline methods, results
 - [Workspace guide](workspace-guide.md) — where to save work, examples vs scratch, kernel tips
 - [Troubleshooting](troubleshooting.md) — connection and analysis errors
+- [Use MIP from your own computer](remote-access.md) — `pip install mip-client` and an API token
 
 ## Typical workflow
 
