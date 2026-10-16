@@ -4,7 +4,7 @@
 # hadolint global ignore=DL3006,DL3008,SC2016
 
 # Base images are pinned by digest; bump the digest to pick up base fixes.
-FROM python:3.12-slim-trixie@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 AS build
+FROM python:3.14-slim-trixie@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 AS build
 COPY --from=ghcr.io/astral-sh/uv:0.11@sha256:77280f2f771df71f90786c314fe1bbc1e023feac652969bbf139c280babf2eb7 /uv /usr/local/bin/uv
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
@@ -46,12 +46,12 @@ ADD --checksum=sha256:70f6126de278bb854f7df50cbd748b58fd01a34a5e58f16976990064bb
 # nosemgrep: semgrep-rules.dockerfile.best-practice.missing-image-version
 FROM codex-acp-${TARGETARCH} AS codex-acp-tgz
 
-FROM python:3.12-slim-trixie@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 AS codex-acp
+FROM python:3.14-slim-trixie@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 AS codex-acp
 RUN --mount=from=codex-acp-tgz,source=/acp.tgz,target=/tmp/acp.tgz \
     tar -xzf /tmp/acp.tgz -C /tmp package/bin/codex-acp \
     && install -m 755 /tmp/package/bin/codex-acp /usr/local/bin/codex-acp
 
-FROM python:3.12-slim-trixie@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
+FROM python:3.14-slim-trixie@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
 
 ENV PYTHONUNBUFFERED=1 \
     PLATFORM_BACKEND_URL=http://platform-backend:8080/services \
