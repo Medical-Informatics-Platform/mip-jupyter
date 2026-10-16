@@ -13,6 +13,7 @@
 - `python-client/` — the `mip-client` package (import `mip`); self-contained, released with every mip-jupyter release, at its version
 - `python-client/tests/` — client unit tests; workspace checks (docs, notebook, jupyter-mcp) live in `dev/`
 - `python-client/expected_library.md` — public API contract exercised by `workspace/Welcome.ipynb`
+- `python-client/mip/agent_docs/` — this agent wiki, shipped in the wheel; `mip/agent.py` (guide + compact summaries) backs both the `mip` command and the hosted Jupyter MCP tools in `dev/jupyter_mcp_tools.py`
 
 Do not hand-edit generated artifacts in `build/`, `*.egg-info/`, or `__pycache__/`.
 

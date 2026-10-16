@@ -31,6 +31,14 @@ uv sync --extra dev --extra notebook
 `mip.Client.from_env()` reads `PLATFORM_BACKEND_URL` (for example
 `https://<host>/services`) and `MIP_TOKEN`.
 
+## `mip` command for AI assistants
+
+`mip guide`, `mip env-status`, `mip catalog`, `mip data-model LABEL`,
+`mip search-variables LABEL TEXT` and `mip algorithms` print compact JSON for AI
+assistants. `mip agent init` writes an `AGENTS.md` that routes an assistant to
+them. The guide pages ship in `mip/agent_docs/`; the code is in `mip/agent.py` and
+`mip/cli.py`.
+
 ## API overview
 
 | Object | Purpose |
