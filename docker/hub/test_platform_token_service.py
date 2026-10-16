@@ -146,6 +146,11 @@ class HubAuthConfigTests(unittest.TestCase):
             config.JupyterHub.authenticator_class, "oauthenticator.generic.GenericOAuthenticator"
         )
 
+    def test_servers_are_stopped_on_hub_restart_unless_disabled(self):
+        self.assertTrue(self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1").JupyterHub.cleanup_servers)
+        config = self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1", JUPYTERHUB_CLEANUP_SERVERS="false")
+        self.assertFalse(config.JupyterHub.cleanup_servers)
+
 
 if __name__ == "__main__":
     unittest.main()
