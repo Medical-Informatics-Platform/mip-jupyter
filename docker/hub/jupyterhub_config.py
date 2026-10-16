@@ -1,6 +1,6 @@
 import os
 
-from platform_token_service import PlatformTokenHandler, fresh_access_token
+from platform_token_service import PLATFORM_TOKEN_SCOPE, PlatformTokenHandler, fresh_access_token
 from platform_token_utils import normalize_cpu, normalize_memory
 
 
@@ -199,6 +199,18 @@ async def inject_platform_token(spawner):
 # it from /api/platform-token instead.
 if _spawner_mode != "operator":
     c.Spawner.pre_spawn_hook = inject_platform_token
+
+# /api/platform-token needs its own permission, so a laptop token can be limited to it
+# (docs/user/remote-access.md). Overriding a default role replaces its scope list, so
+# the defaults (jupyterhub/roles.py, 5.5.2) are repeated: users can hold and delegate
+# the scope, and servers' JUPYTERHUB_API_TOKEN (built from the server role) keeps it.
+c.JupyterHub.custom_scopes = {
+    PLATFORM_TOKEN_SCOPE: {"description": "Get your MIP platform access token."},
+}
+c.JupyterHub.load_roles = [
+    {"name": "user", "scopes": ["self", PLATFORM_TOKEN_SCOPE]},
+    {"name": "server", "scopes": ["users:activity!user", "access:servers!server", PLATFORM_TOKEN_SCOPE]},
+]
 
 c.JupyterHub.extra_handlers = [
     (r"/api/platform-token", PlatformTokenHandler),
