@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from typing import Any
+from urllib.parse import urlparse
 
 from .exceptions import MipConfigurationError
 from .display import HelpText
@@ -34,21 +35,71 @@ def _env_token() -> str | None:
     )
 
 
+def _require_https(url: str) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme == "https" or (
+        parsed.scheme == "http" and parsed.hostname in ("localhost", "127.0.0.1", "::1")
+    ):
+        return
+    raise MipConfigurationError(f"Remote MIP URLs must use https:// (got {url}).")
+
+
 class Client:
     """Entry point for catalog discovery, algorithm metadata, and execution."""
 
-    def __init__(self, base_url: str, token: str | None = None, *, timeout: float = 30.0):
-        self._transport = Transport(base_url=base_url, token=token, timeout=timeout)
+    def __init__(
+        self,
+        base_url: str,
+        token: str | None = None,
+        *,
+        timeout: float = 30.0,
+        hub_api_url: str | None = None,
+        hub_api_token: str | None = None,
+    ):
+        self._transport = Transport(
+            base_url=base_url,
+            token=token,
+            timeout=timeout,
+            hub_api_url=hub_api_url,
+            hub_api_token=hub_api_token,
+        )
 
     @classmethod
     def from_env(cls) -> "Client":
-        base_url = _env_base_url()
+        """Connect using environment variables.
+
+        In the MIP notebook everything is preset. From your own computer set
+        MIP_URL (the portal, e.g. https://host) and MIP_API_TOKEN (a JupyterHub
+        API token with the custom:mip-platform-token permission).
+        """
+        mip_url = os.getenv("MIP_URL", "").rstrip("/")
+        api_token = os.getenv("MIP_API_TOKEN")
+        base_url = _env_base_url() or (f"{mip_url}/services" if mip_url else None)
         if not base_url:
             raise MipConfigurationError(
-                "PLATFORM_BACKEND_URL or MIP_BASE_URL is required to create Client.from_env()."
+                "PLATFORM_BACKEND_URL, MIP_BASE_URL or MIP_URL is required to create Client.from_env()."
             )
+        hub_api_url = os.getenv("JUPYTERHUB_API_URL") or (
+            f"{mip_url}/notebook/hub/api" if mip_url else None
+        )
+        token = _env_token()
+        if mip_url or api_token:
+            if not api_token and not token:
+                raise MipConfigurationError(
+                    "MIP_API_TOKEN is required with MIP_URL. Create one on the "
+                    "MIP portal at /notebook/hub/token."
+                )
+            for url in (base_url, hub_api_url):
+                if url:
+                    _require_https(url)
         timeout = float(os.getenv("PLATFORM_BACKEND_TIMEOUT", "30"))
-        return cls(base_url=base_url, token=_env_token(), timeout=timeout)
+        return cls(
+            base_url=base_url,
+            token=token,
+            timeout=timeout,
+            hub_api_url=hub_api_url,
+            hub_api_token=api_token,
+        )
 
     def catalog(self):
         from .catalog import Catalog

@@ -10,9 +10,12 @@ import time
 import unittest
 from unittest.mock import MagicMock, patch
 
+from jupyterhub import orm, roles, scopes
+from jupyterhub.app import JupyterHub
+from tornado import web
 from traitlets.config.loader import PyFileConfigLoader
 
-from platform_token_service import fresh_access_token
+from platform_token_service import PLATFORM_TOKEN_SCOPE, PlatformTokenHandler, fresh_access_token
 from platform_token_utils import (
     decode_jwt_exp,
     normalize_cpu,
@@ -145,6 +148,111 @@ class HubAuthConfigTests(unittest.TestCase):
         self.assertEqual(
             config.JupyterHub.authenticator_class, "oauthenticator.generic.GenericOAuthenticator"
         )
+
+    def test_servers_are_stopped_on_hub_restart_unless_disabled(self):
+        self.assertTrue(self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1").JupyterHub.cleanup_servers)
+        config = self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1", JUPYTERHUB_CLEANUP_SERVERS="false")
+        self.assertFalse(config.JupyterHub.cleanup_servers)
+
+    def test_idle_culler_runs_only_when_a_timeout_is_set(self):
+        config = self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1")
+        self.assertNotIn("services", config.JupyterHub)
+
+        config = self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1", JUPYTERHUB_CULL_IDLE_TIMEOUT="3600")
+        [service] = config.JupyterHub.services
+        self.assertEqual(service["name"], "idle-culler")
+        self.assertIn("--timeout=3600", service["command"])
+        self.assertIn("--cull-every=600", service["command"])
+        role = next(r for r in config.JupyterHub.load_roles if r["name"] == "idle-culler")
+        self.assertEqual(role["services"], ["idle-culler"])
+        self.assertIn("delete:servers", role["scopes"])
+
+
+class PlatformTokenScopeTests(unittest.TestCase):
+    """Roles and scopes from jupyterhub_config.py, resolved by the real JupyterHub."""
+
+    @classmethod
+    def setUpClass(cls):
+        with patch.dict(os.environ, {"JUPYTERHUB_USE_DUMMY_AUTH": "1"}, clear=True):
+            app = JupyterHub(db_url="sqlite://")
+            app.load_config_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), "jupyterhub_config.py"))
+        app.init_db()
+        app.authenticator = app.authenticator_class(parent=app)
+        asyncio.run(app.init_role_creation())
+        cls.db = app.db
+        cls.user = orm.User(name="alice")
+        cls.db.add(cls.user)
+        cls.db.commit()
+        roles.assign_default_roles(cls.db, cls.user)
+
+    def _token_scopes(self, requested):
+        token = orm.APIToken.find(self.db, self.user.new_api_token(scopes=requested))
+        return scopes.parse_scopes(scopes.get_scopes_for(token))
+
+    def test_scope_only_token_gets_platform_token_and_nothing_else(self):
+        # JupyterHub lets every token read its owner's name and groups.
+        self.assertEqual(
+            set(self._token_scopes([PLATFORM_TOKEN_SCOPE])),
+            {PLATFORM_TOKEN_SCOPE, "read:users:name", "read:users:groups"},
+        )
+
+    def test_token_without_scope_is_denied(self):
+        self.assertNotIn(PLATFORM_TOKEN_SCOPE, self._token_scopes(["read:users!user"]))
+
+    def test_default_user_token_keeps_user_scopes(self):
+        granted = self._token_scopes(None)
+        self.assertIn(PLATFORM_TOKEN_SCOPE, granted)
+        self.assertIn("servers", granted)
+
+    def test_server_token_keeps_scope(self):
+        server_scopes = [
+            scope + "=alice/" if scope.endswith("!server") else scope
+            for scope in orm.Role.find(self.db, "server").scopes
+        ]
+        granted = self._token_scopes(server_scopes)
+        self.assertIn(PLATFORM_TOKEN_SCOPE, granted)
+        self.assertIn("users:activity", granted)
+
+    def test_default_roles_are_kept(self):
+        self.assertIsNotNone(orm.Role.find(self.db, "admin"))
+        self.assertIsNotNone(orm.Role.find(self.db, "token"))
+
+
+class PlatformTokenHandlerTests(unittest.TestCase):
+    def _get(self, user, parsed_scopes):
+        handler = MagicMock(current_user=user, parsed_scopes=parsed_scopes)
+        asyncio.run(PlatformTokenHandler.get(handler))
+        return handler
+
+    @patch("platform_token_service.fresh_access_token")
+    def test_scoped_token_returns_owner_access_token(self, fresh_mock):
+        token = _make_jwt(int(time.time()) + 3600)
+        fresh_mock.return_value = token
+        user = MagicMock()
+        handler = self._get(user, {PLATFORM_TOKEN_SCOPE: scopes.Scope.ALL})
+        fresh_mock.assert_called_once_with(user)
+        handler.write.assert_called_once_with({"access_token": token})
+
+    @patch("platform_token_service.fresh_access_token")
+    def test_token_without_scope_is_rejected(self, fresh_mock):
+        with self.assertRaises(web.HTTPError) as ctx:
+            self._get(MagicMock(), {"read:users": scopes.Scope.ALL})
+        self.assertEqual(ctx.exception.status_code, 403)
+        fresh_mock.assert_not_called()
+
+    @patch("platform_token_service.fresh_access_token")
+    def test_service_is_rejected(self, fresh_mock):
+        with self.assertRaises(web.HTTPError) as ctx:
+            self._get(orm.Service(name="svc"), {PLATFORM_TOKEN_SCOPE: scopes.Scope.ALL})
+        self.assertEqual(ctx.exception.status_code, 403)
+        fresh_mock.assert_not_called()
+
+    @patch("platform_token_service.fresh_access_token")
+    def test_missing_platform_token_is_401(self, fresh_mock):
+        fresh_mock.return_value = None
+        with self.assertRaises(web.HTTPError) as ctx:
+            self._get(MagicMock(), {PLATFORM_TOKEN_SCOPE: scopes.Scope.ALL})
+        self.assertEqual(ctx.exception.status_code, 401)
 
 
 if __name__ == "__main__":

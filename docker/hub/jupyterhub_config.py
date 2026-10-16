@@ -1,6 +1,7 @@
 import os
+import sys
 
-from platform_token_service import PlatformTokenHandler, fresh_access_token
+from platform_token_service import PLATFORM_TOKEN_SCOPE, PlatformTokenHandler, fresh_access_token
 from platform_token_utils import normalize_cpu, normalize_memory
 
 
@@ -103,7 +104,11 @@ if _spawner_mode == "operator":
     c.NotebookSpawner.start_timeout = 300
 else:
     c.JupyterHub.spawner_class = "kubespawner.KubeSpawner"
-c.KubeSpawner.image = _env("JUPYTER_SINGLEUSER_IMAGE", "hbpmip/mip-jupyter:dev")
+# Set to false to keep user servers running across hub restarts, so updates do not
+# interrupt notebooks. Only with a persistent hub database (mip/deployment mounts
+# one): a hub that loses its database forgets the servers it left running.
+c.JupyterHub.cleanup_servers = _env_bool("JUPYTERHUB_CLEANUP_SERVERS", True)
+c.KubeSpawner.image =_env("JUPYTER_SINGLEUSER_IMAGE", "hbpmip/mip-jupyter:dev")
 c.KubeSpawner.image_pull_policy = _env("JUPYTER_IMAGE_PULL_POLICY", "Always")
 c.KubeSpawner.namespace = _env("JUPYTERHUB_NAMESPACE", os.environ.get("POD_NAMESPACE", "default"))
 
@@ -199,6 +204,42 @@ async def inject_platform_token(spawner):
 # it from /api/platform-token instead.
 if _spawner_mode != "operator":
     c.Spawner.pre_spawn_hook = inject_platform_token
+
+# /api/platform-token needs its own permission, so a laptop token can be limited to it
+# (docs/user/remote-access.md). Overriding a default role replaces its scope list, so
+# the defaults (jupyterhub/roles.py, 5.5.2) are repeated: users can hold and delegate
+# the scope, and servers' JUPYTERHUB_API_TOKEN (built from the server role) keeps it.
+c.JupyterHub.custom_scopes = {
+    PLATFORM_TOKEN_SCOPE: {"description": "Get your MIP platform access token."},
+}
+c.JupyterHub.load_roles = [
+    {"name": "user", "scopes": ["self", PLATFORM_TOKEN_SCOPE]},
+    {"name": "server", "scopes": ["users:activity!user", "access:servers!server", PLATFORM_TOKEN_SCOPE]},
+]
+
+# Stop user servers idle for longer than this many seconds (0 = never). Files stay on
+# the user's volume; open tabs, running cells and the AI chat count as activity.
+_cull_idle_timeout = int(_env("JUPYTERHUB_CULL_IDLE_TIMEOUT", "0") or 0)
+if _cull_idle_timeout > 0:
+    c.JupyterHub.services = [
+        {
+            "name": "idle-culler",
+            "command": [
+                sys.executable,
+                "-m",
+                "jupyterhub_idle_culler",
+                f"--timeout={_cull_idle_timeout}",
+                f"--cull-every={int(_env('JUPYTERHUB_CULL_EVERY', '600'))}",
+            ],
+        }
+    ]
+    c.JupyterHub.load_roles.append(
+        {
+            "name": "idle-culler",
+            "scopes": ["list:users", "read:users:activity", "read:servers", "delete:servers"],
+            "services": ["idle-culler"],
+        }
+    )
 
 c.JupyterHub.extra_handlers = [
     (r"/api/platform-token", PlatformTokenHandler),

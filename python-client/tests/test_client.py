@@ -56,6 +56,60 @@ class TestClient(unittest.TestCase):
             with self.assertRaises(MipConfigurationError):
                 Client.from_env()
 
+    def test_from_env_mip_url_derives_backend_and_hub(self):
+        with patch.dict(os.environ, {"MIP_URL": "https://mip.example/", "MIP_API_TOKEN": "hub-token"}, clear=True):
+            client = Client.from_env()
+        self.assertEqual(client._transport.base_url, "https://mip.example/services/")
+        self.assertEqual(client._transport.hub_api_url, "https://mip.example/notebook/hub/api")
+        self.assertEqual(client._transport.hub_api_token, "hub-token")
+        self.assertIsNone(client._transport.token)
+
+    def test_from_env_explicit_urls_override_mip_url(self):
+        env = {
+            "MIP_URL": "https://mip.example",
+            "MIP_API_TOKEN": "hub-token",
+            "PLATFORM_BACKEND_URL": "https://api.example/services",
+            "JUPYTERHUB_API_URL": "https://hub.example/hub/api",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            client = Client.from_env()
+        self.assertEqual(client._transport.base_url, "https://api.example/services/")
+        self.assertEqual(client._transport.hub_api_url, "https://hub.example/hub/api")
+
+    def test_from_env_remote_refuses_plain_http(self):
+        for env in (
+            {"MIP_URL": "http://mip.example", "MIP_API_TOKEN": "hub-token"},
+            {"MIP_URL": "https://mip.example", "MIP_API_TOKEN": "hub-token",
+             "JUPYTERHUB_API_URL": "http://mip.example/notebook/hub/api"},
+        ):
+            with self.subTest(env=env), patch.dict(os.environ, env, clear=True):
+                with self.assertRaises(MipConfigurationError) as ctx:
+                    Client.from_env()
+                self.assertNotIn("hub-token", str(ctx.exception))
+
+    def test_from_env_remote_allows_http_localhost(self):
+        for host in ("localhost:8080", "127.0.0.1", "[::1]:8080"):
+            with self.subTest(host=host), patch.dict(
+                os.environ, {"MIP_URL": f"http://{host}", "MIP_API_TOKEN": "hub-token"}, clear=True
+            ):
+                self.assertEqual(Client.from_env()._transport.base_url, f"http://{host}/services/")
+
+    def test_from_env_mip_url_requires_api_token(self):
+        with patch.dict(os.environ, {"MIP_URL": "https://mip.example"}, clear=True):
+            with self.assertRaises(MipConfigurationError):
+                Client.from_env()
+
+    def test_from_env_in_cluster_http_still_works(self):
+        env = {
+            "PLATFORM_BACKEND_URL": "http://platform-backend:8080/services",
+            "JUPYTERHUB_API_URL": "http://jupyterhub:8081/notebook/hub/api",
+            "JUPYTERHUB_API_TOKEN": "server-token",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            client = Client.from_env()
+        self.assertEqual(client._transport.base_url, "http://platform-backend:8080/services/")
+        self.assertEqual(client._transport.hub_api_token, "server-token")
+
     def test_client_does_not_expose_http_methods(self):
         client = Client("http://backend/services")
         self.assertFalse(hasattr(client, "get"))
@@ -186,6 +240,59 @@ class TestTransport(unittest.TestCase):
             transport = Transport("http://backend/services", token=expired)
             with self.assertRaises(MipBackendError):
                 transport.get("/data-models")
+
+    def _hub_returns(self, get_mock, session_cls, status_code):
+        get_mock.return_value = MagicMock(status_code=status_code, content=b"", json=lambda: {})
+        session_cls.return_value.request.return_value = MagicMock(status_code=401, content=b"")
+        with patch.dict(os.environ, {}, clear=True):
+            transport = Transport(
+                "https://mip.example/services",
+                hub_api_url="https://mip.example/notebook/hub/api",
+                hub_api_token="secret-hub-token",
+            )
+            with self.assertRaises(MipBackendError) as ctx:
+                transport.get("/data-models")
+        self.assertNotIn("secret-hub-token", str(ctx.exception))
+        self.assertEqual(
+            get_mock.call_args.kwargs["headers"], {"Authorization": "token secret-hub-token"}
+        )
+        return str(ctx.exception)
+
+    @patch("mip.transport.requests.get")
+    @patch("mip.transport.requests.Session")
+    def test_hub_rejecting_api_token_is_explained(self, session_cls, get_mock):
+        message = self._hub_returns(get_mock, session_cls, 403)
+        self.assertIn("custom:mip-platform-token", message)
+
+    @patch("mip.transport.requests.get")
+    @patch("mip.transport.requests.Session")
+    def test_hub_without_platform_token_asks_to_sign_in(self, session_cls, get_mock):
+        message = self._hub_returns(get_mock, session_cls, 401)
+        self.assertIn("open the Notebook page", message.replace("Open", "open"))
+
+    @patch("mip.transport.requests.get")
+    @patch("mip.transport.requests.Session")
+    def test_explicit_hub_config_fetches_token_without_env(self, session_cls, get_mock):
+        fresh = _make_jwt(int(time.time()) + 3600)
+        get_mock.return_value = MagicMock(
+            status_code=200, content=b"{}", json=lambda: {"access_token": fresh}
+        )
+        backend_response = MagicMock(status_code=200, content=b'{"ok": true}')
+        backend_response.json.return_value = {"ok": True}
+        session_cls.return_value.request.return_value = backend_response
+
+        with patch.dict(os.environ, {}, clear=True):
+            transport = Transport(
+                "https://mip.example/services",
+                hub_api_url="https://mip.example/notebook/hub/api",
+                hub_api_token="hub-token",
+            )
+            self.assertEqual(transport.get("/data-models"), {"ok": True})
+            self.assertEqual(transport.token, fresh)
+            self.assertNotIn("MIP_TOKEN", os.environ)
+        self.assertEqual(
+            get_mock.call_args.args[0], "https://mip.example/notebook/hub/api/platform-token"
+        )
 
 
 if __name__ == "__main__":

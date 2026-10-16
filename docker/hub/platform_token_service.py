@@ -11,6 +11,8 @@ from tornado import web
 
 from platform_token_utils import refresh_access_token, token_is_expired
 
+PLATFORM_TOKEN_SCOPE = "custom:mip-platform-token"
+
 _refresh_locks: defaultdict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
 
@@ -32,7 +34,9 @@ async def fresh_access_token(user) -> str | None:
 
 
 class PlatformTokenHandler(APIHandler):
-    """Return the platform-backend Bearer token for the authenticated user server.
+    """Return the platform-backend Bearer token of the requesting token's owner.
+
+    Callers are user servers and users' own API tokens; both need PLATFORM_TOKEN_SCOPE.
 
     Uses APIHandler (in-process token auth) instead of HubAuthenticated because this
     endpoint is registered on the hub itself; HubAuthenticated would HTTP-call the
@@ -45,6 +49,10 @@ class PlatformTokenHandler(APIHandler):
             raise web.HTTPError(403, "Not authenticated")
         if isinstance(user, orm.Service):
             raise web.HTTPError(403, "Only user server tokens are supported")
+        # Checked here, not with @needs_scope: custom scopes are only registered
+        # when the hub starts, after this module is imported.
+        if PLATFORM_TOKEN_SCOPE not in self.parsed_scopes:
+            raise web.HTTPError(403, f"Token is missing the {PLATFORM_TOKEN_SCOPE} permission")
 
         access_token = await fresh_access_token(user)
         if not access_token:

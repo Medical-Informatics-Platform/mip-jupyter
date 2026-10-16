@@ -8,32 +8,30 @@ import re
 import uuid
 from copy import deepcopy
 from datetime import datetime, timezone
-from pathlib import Path
-from pathlib import PurePosixPath
-from typing import Any
-from typing import Literal
+from pathlib import Path, PurePosixPath
+from typing import Any, Literal
 
+from mip import agent
+from mip.agent import (
+    DEFAULT_ALGORITHM_SUMMARY_LIMIT,
+    DEFAULT_CATALOG_LIMIT,
+    DEFAULT_DATA_MODEL_LIST_LIMIT,
+    DEFAULT_VARIABLE_SEARCH_LIMIT,
+    DEFAULT_WIKI_MAX_CHARS,
+    MAX_DOC_RESULTS,
+    MAX_DOC_SNIPPET_CHARS,  # noqa: F401 - re-exported for tests
+    MAX_LIST_ITEMS,  # noqa: F401 - re-exported for tests
+    MAX_METADATA_STRING_CHARS,
+    MAX_RESPONSE_JSON_CHARS,  # noqa: F401 - re-exported for tests
+    MAX_WIKI_CONTENT_CHARS,  # noqa: F401 - re-exported for tests
+)
+from mip.agent import bounded_response as _bounded_metadata_response
+from mip.agent import clamp as _limit
+from mip.agent import markdown_title as _markdown_title
+from mip.agent import snippet_for_query as _snippet_for_query
+from mip.agent import truncate as _truncate
 
-GUIDE_RELATIVE_PATH = Path("llm") / "wiki" / "00-agent-workspace.md"
-ALLOWED_WIKI_PAGES: dict[str, Path] = {
-    "index": Path("llm") / "INDEX.md",
-    "00-agent-workspace": GUIDE_RELATIVE_PATH,
-    "01-onboarding": Path("llm") / "wiki" / "01-onboarding.md",
-    "02-analysis-workflow": Path("llm") / "wiki" / "02-analysis-workflow.md",
-    "03-mip-client-api": Path("llm") / "wiki" / "03-mip-client-api.md",
-    "04-jupyter-mcp": Path("llm") / "wiki" / "04-jupyter-mcp.md",
-    "05-env-and-backend": Path("llm") / "wiki" / "05-env-and-backend.md",
-    "06-runtime-state": Path("llm") / "wiki" / "06-runtime-state.md",
-    "07-pipeline-algorithms": Path("llm") / "wiki" / "07-pipeline-algorithms.md",
-    "agent-exploration": Path("llm") / "wiki" / "agent-exploration.md",
-    "dev-contributor": Path("llm") / "wiki" / "dev-contributor.md",
-    "recipes/stroke-analysis": Path("llm") / "wiki" / "recipes" / "stroke-analysis.md",
-}
 BLOCKED_PATH_PARTS = {".ipynb_checkpoints", ".venv", ".playwright-cli", "__pycache__"}
-MAX_DOC_RESULTS = 10
-MAX_DOC_SNIPPET_CHARS = 600
-MAX_WIKI_CONTENT_CHARS = 6000
-DEFAULT_WIKI_MAX_CHARS = 3000
 MAX_CELL_READ_CHARS = 20000
 MAX_CELL_WRITE_CHARS = 4000
 MAX_SCRATCH_PAYLOAD_CHARS = 8000
@@ -43,15 +41,6 @@ MAX_SCRATCH_READ_CHARS = 8000
 MAX_SCRATCH_LIST_ITEMS = 50
 MAX_NOTEBOOK_OUTLINE_CELLS = 100
 MAX_EXECUTED_CELL_SUMMARIES = 20
-# Hard caps for MIP metadata list payloads (production Cohort Scout context).
-MAX_LIST_ITEMS = 40
-DEFAULT_CATALOG_LIMIT = 10
-DEFAULT_VARIABLE_SEARCH_LIMIT = 10
-DEFAULT_ALGORITHM_SUMMARY_LIMIT = 20
-DEFAULT_DATA_MODEL_LIST_LIMIT = 20
-MAX_METADATA_ITEM_CHARS = 400
-MAX_METADATA_STRING_CHARS = 180
-MAX_RESPONSE_JSON_CHARS = 12000
 SAFE_JUPYTER_MCP_TOOLS = [
     "dev.jupyter_mcp_tools:agent_read_guide",
     "dev.jupyter_mcp_tools:agent_search_docs",
@@ -158,31 +147,12 @@ def _server_path(relative_path: Path) -> str:
     return (root_prefix / relative_path).as_posix()
 
 
-def _limit(value: int | str | None, default: int, maximum: int) -> int:
-    if value is None:
-        return default
-    try:
-        parsed = int(value)
-    except (TypeError, ValueError):
-        return default
-    return max(1, min(parsed, maximum))
-
-
 def _validate_cell_content(content: str, *, label: str = "content") -> None:
     if len(content) > MAX_CELL_WRITE_CHARS:
         raise ValueError(
             f"{label} exceeds {MAX_CELL_WRITE_CHARS} characters; "
             "split into smaller scratch-append-lines or append-code calls."
         )
-
-
-def _truncate(text: Any, max_chars: int, *, suffix: str = "...") -> str:
-    value = str(text or "")
-    if len(value) <= max_chars:
-        return value
-    if max_chars <= len(suffix):
-        return value[:max_chars]
-    return value[: max_chars - len(suffix)] + suffix
 
 
 def _cell_source(cell: dict[str, Any]) -> str:
@@ -339,45 +309,6 @@ def _notebook_scratch_marker_matches(data: dict[str, Any], marker: dict[str, Any
     return stored == marker
 
 
-def _agent_docs_root() -> Path | None:
-    configured = os.getenv("MIP_AGENT_DOCS")
-    if configured:
-        path = Path(configured).expanduser()
-        if not path.is_absolute():
-            path = Path.cwd() / path
-        resolved = path.resolve()
-        if resolved.is_dir():
-            return resolved
-    repo = Path(__file__).resolve().parents[1]
-    if (repo / "docs" / "llm").is_dir():
-        return repo
-    return None
-
-
-def _wiki_page_key(page: str | None) -> str:
-    key = str(page or "00-agent-workspace").strip().replace("\\", "/")
-    if key.endswith(".md"):
-        key = key[:-3]
-    if key not in ALLOWED_WIKI_PAGES:
-        allowed = ", ".join(sorted(ALLOWED_WIKI_PAGES))
-        raise ValueError(f"Unknown agent wiki page {page!r}; allowed pages: {allowed}")
-    return key
-
-
-def _agent_wiki_path(page: str | None = None) -> tuple[str, Path | None]:
-    page_key = _wiki_page_key(page)
-    relative_path = ALLOWED_WIKI_PAGES[page_key]
-    candidates: list[Path] = []
-    agent_root = _agent_docs_root()
-    if agent_root is not None:
-        candidates.append(agent_root / relative_path)
-        candidates.append(agent_root / "docs" / relative_path)
-    for path in candidates:
-        if path.is_file():
-            return page_key, path
-    return page_key, None
-
-
 def _doc_files() -> list[Path]:
     docs_root = _workspace_root() / "docs"
     if not docs_root.is_dir():
@@ -398,43 +329,17 @@ def _workspace_display_path(path: Path) -> str:
     return path.relative_to(_workspace_root()).as_posix()
 
 
-def _markdown_title(text: str, fallback: str) -> str:
-    for line in text.splitlines():
-        if line.startswith("# "):
-            return line[2:].strip()
-    return fallback
+def _guide_docs_root() -> Path | None:
+    """MIP_AGENT_DOCS override (the image's /opt/mip-agent-docs layout); else the packaged guide."""
 
-
-def _snippet_for_query(text: str, query: str) -> str:
-    lower_text = text.lower()
-    terms = [term for term in re.split(r"\W+", query.lower()) if term]
-    positions = [lower_text.find(term) for term in terms if lower_text.find(term) >= 0]
-    start = max(0, min(positions) - 120) if positions else 0
-    snippet = text[start : start + MAX_DOC_SNIPPET_CHARS].strip()
-    return _truncate(snippet.replace("\r\n", "\n"), MAX_DOC_SNIPPET_CHARS)
-
-
-def _section_matches(text: str, topic: str | None) -> list[str]:
-    terms = [term for term in re.split(r"\W+", (topic or "").lower()) if term]
-    if not terms:
-        return [text]
-    sections: list[str] = []
-    current: list[str] = []
-    for line in text.splitlines():
-        if line.startswith("#") and current:
-            section = "\n".join(current).strip()
-            lower = section.lower()
-            if any(term in lower for term in terms):
-                sections.append(section)
-            current = [line]
-        else:
-            current.append(line)
-    if current:
-        section = "\n".join(current).strip()
-        lower = section.lower()
-        if any(term in lower for term in terms):
-            sections.append(section)
-    return sections
+    configured = os.getenv("MIP_AGENT_DOCS")
+    if not configured:
+        return None
+    path = Path(configured).expanduser()
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    llm = path.resolve() / "llm"
+    return llm if llm.is_dir() else None
 
 
 async def agent_read_guide(
@@ -444,29 +349,7 @@ async def agent_read_guide(
 ) -> dict[str, Any]:
     """Read an allowlisted agent wiki page, optionally narrowed by topic."""
 
-    page_key, guide_path = _agent_wiki_path(page)
-    relative_path = ALLOWED_WIKI_PAGES[page_key]
-    max_chars = _limit(max_chars, DEFAULT_WIKI_MAX_CHARS, MAX_WIKI_CONTENT_CHARS)
-    if guide_path is None:
-        return {
-            "ok": False,
-            "page": page_key,
-            "path": relative_path.as_posix(),
-            "error": "Agent wiki page is missing.",
-        }
-    text = guide_path.read_text(encoding="utf-8")
-    # A missed topic falls back to the whole page and reports matched=false.
-    sections = _section_matches(text, topic)
-    content = "\n\n".join(sections) if sections else text
-    return {
-        "ok": True,
-        "page": page_key,
-        "path": relative_path.as_posix(),
-        "topic": topic,
-        "matched": bool(sections),
-        "content": _truncate(content, max_chars),
-        "truncated": len(content) > max_chars,
-    }
+    return agent.read_guide(page, topic, max_chars, docs_root=_guide_docs_root())
 
 
 async def agent_search_docs(query: str, limit: int = 5) -> dict[str, Any]:
@@ -682,122 +565,13 @@ async def open_file(path: str) -> dict[str, Any]:
 async def mip_env_status() -> dict[str, Any]:
     """Report whether the MIP platform connection is configured (no secrets or env names)."""
 
-    backend_configured = any(os.getenv(name) for name in ("PLATFORM_BACKEND_URL", "MIP_BASE_URL"))
-
-    token_configured = any(os.getenv(name) for name in ("PLATFORM_TOKEN", "MIP_TOKEN"))
-    # Under the notebook operator the hub hands the token out on first use.
-    token_configured = token_configured or bool(
-        os.getenv("JUPYTERHUB_API_URL") and os.getenv("JUPYTERHUB_API_TOKEN")
-    )
-    if not token_configured:
-        token_configured = any(
-            token_file.is_file() and token_file.stat().st_size > 0
-            for token_file in (_workspace_root() / "mip_token", _workspace_root() / ".mip_token")
-        )
-
-    return {
-        "ok": True,
-        "connection_configured": backend_configured,
-        "authenticated": token_configured,
-        "ready": backend_configured and token_configured,
-    }
-
-
-def _mip_client():
-    from mip import Client
-
-    return Client.from_env()
-
-
-def _tool_error(exc: Exception) -> dict[str, Any]:
-    return {
-        "ok": False,
-        "error_type": type(exc).__name__,
-        "error": _truncate(str(exc), MAX_METADATA_STRING_CHARS),
-    }
-
-
-_METADATA_PRIORITY = (
-    "code",
-    "id",
-    "slug",
-    "name",
-    "label",
-    "type",
-    "version",
-    "desc",
-    "description",
-    "n_variables",
-    "n_datasets",
-    "n_groups",
-    "n_rows",
-)
-
-
-def _compact_metadata_item(item: Any) -> dict[str, Any]:
-    if not isinstance(item, dict):
-        return {"value": _truncate(item, MAX_METADATA_ITEM_CHARS)}
-
-    compact: dict[str, Any] = {}
-    for key in _METADATA_PRIORITY:
-        if key not in item:
-            continue
-        value = item[key]
-        if isinstance(value, str):
-            compact[key] = _truncate(value, MAX_METADATA_STRING_CHARS)
-        elif value is None or isinstance(value, (bool, int, float)):
-            compact[key] = value
-
-    if len(json.dumps(compact, ensure_ascii=False)) <= MAX_METADATA_ITEM_CHARS:
-        return compact
-
-    fitted: dict[str, Any] = {}
-    for key in _METADATA_PRIORITY:
-        if key not in compact:
-            continue
-        candidate = {**fitted, key: compact[key]}
-        if len(json.dumps(candidate, ensure_ascii=False)) <= MAX_METADATA_ITEM_CHARS:
-            fitted = candidate
-    return fitted
-
-
-def _compact_metadata_items(items: list[Any], limit: int) -> list[dict[str, Any]]:
-    return [_compact_metadata_item(item) for item in items[:limit]]
-
-
-def _bounded_metadata_response(
-    payload: dict[str, Any],
-    *,
-    list_keys: tuple[str, ...],
-) -> dict[str, Any]:
-    payload["response_truncated"] = False
-    while len(json.dumps(payload, ensure_ascii=False)) > MAX_RESPONSE_JSON_CHARS:
-        candidates = [key for key in list_keys if payload.get(key)]
-        if not candidates:
-            break
-        key = max(candidates, key=lambda candidate: len(payload[candidate]))
-        payload[key].pop()
-        payload["response_truncated"] = True
-    return payload
+    return agent.env_status(token_dir=_workspace_root())
 
 
 async def mip_catalog_summary(limit: int = DEFAULT_CATALOG_LIMIT) -> dict[str, Any]:
     """Return compact authorized data-model summaries from the MIP platform."""
 
-    limit = _limit(limit, DEFAULT_CATALOG_LIMIT, MAX_LIST_ITEMS)
-    try:
-        summaries = _mip_client().catalog().summaries()
-    except Exception as exc:  # noqa: BLE001 - MCP tools should return structured errors.
-        return _tool_error(exc)
-    return _bounded_metadata_response(
-        {
-        "ok": True,
-        "count": len(summaries),
-        "items": _compact_metadata_items(summaries, limit),
-        "truncated": len(summaries) > limit,
-        },
-        list_keys=("items",),
-    )
+    return agent.catalog_summary(limit)
 
 
 async def mip_data_model_summary(
@@ -809,29 +583,7 @@ async def mip_data_model_summary(
 ) -> dict[str, Any]:
     """Return compact metadata for one data model."""
 
-    limit = _limit(limit, DEFAULT_DATA_MODEL_LIST_LIMIT, MAX_LIST_ITEMS)
-    try:
-        data_model = _mip_client().catalog().data_model(code, version=version)
-        variables = data_model.list_variables() if include_variables else []
-        groups = data_model.list_groups() if include_groups else []
-        datasets = data_model.list_datasets()
-    except Exception as exc:  # noqa: BLE001 - MCP tools should return structured errors.
-        return _tool_error(exc)
-
-    result = {
-        "ok": True,
-        "summary": _compact_metadata_item(data_model.summary()),
-        "datasets": _compact_metadata_items(datasets, limit),
-        "datasets_truncated": len(datasets) > limit,
-        "groups": _compact_metadata_items(groups, limit),
-        "groups_truncated": len(groups) > limit,
-        "variables": _compact_metadata_items(variables, limit),
-        "variables_truncated": len(variables) > limit,
-    }
-    return _bounded_metadata_response(
-        result,
-        list_keys=("datasets", "groups", "variables"),
-    )
+    return agent.data_model_summary(code, version, include_variables, include_groups, limit)
 
 
 async def mip_search_variables(
@@ -842,50 +594,13 @@ async def mip_search_variables(
 ) -> dict[str, Any]:
     """Search variables in one data model by code or label."""
 
-    limit = _limit(limit, DEFAULT_VARIABLE_SEARCH_LIMIT, MAX_LIST_ITEMS)
-    try:
-        data_model = _mip_client().catalog().data_model(code, version=version)
-        matches = [variable.summary() for variable in data_model.variables.search(query)]
-    except Exception as exc:  # noqa: BLE001 - MCP tools should return structured errors.
-        return _tool_error(exc)
-    return _bounded_metadata_response(
-        {
-        "ok": True,
-        "code": code,
-        "version": version,
-        "query": query,
-        "count": len(matches),
-        "items": _compact_metadata_items(matches, limit),
-        "truncated": len(matches) > limit,
-        },
-        list_keys=("items",),
-    )
+    return agent.search_variables(code, query, version, limit)
 
 
 async def mip_algorithm_summary(limit: int = DEFAULT_ALGORITHM_SUMMARY_LIMIT) -> dict[str, Any]:
     """Return compact algorithm summaries from the MIP platform."""
 
-    limit = _limit(limit, DEFAULT_ALGORITHM_SUMMARY_LIMIT, MAX_LIST_ITEMS)
-    try:
-        algorithms = _mip_client().algorithms().list()
-        summaries = [algorithm.summary() for algorithm in algorithms]
-    except Exception as exc:  # noqa: BLE001 - MCP tools should return structured errors.
-        return _tool_error(exc)
-
-    counts_by_type: dict[str, int] = {}
-    for item in summaries:
-        kind = str(item.get("type") or "unknown")
-        counts_by_type[kind] = counts_by_type.get(kind, 0) + 1
-    return _bounded_metadata_response(
-        {
-            "ok": True,
-            "count": len(summaries),
-            "counts_by_type": counts_by_type,
-            "items": _compact_metadata_items(summaries, limit),
-            "truncated": len(summaries) > limit,
-        },
-        list_keys=("items",),
-    )
+    return agent.algorithm_summary(limit)
 
 
 def _under(relative: Path, file_path: Path, folder: str) -> bool:

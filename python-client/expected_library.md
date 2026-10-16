@@ -80,6 +80,7 @@ Runnable companion notebook: `workspace/Welcome.ipynb`.
 ```text
 PLATFORM_BACKEND_URL or MIP_BASE_URL
 PLATFORM_TOKEN or MIP_TOKEN
+MIP_URL and MIP_API_TOKEN (remote: backend {MIP_URL}/services, hub {MIP_URL}/notebook/hub/api)
 PLATFORM_BACKEND_TIMEOUT
 PLATFORM_BACKEND_ALLOW_REDIRECTS
 ```
