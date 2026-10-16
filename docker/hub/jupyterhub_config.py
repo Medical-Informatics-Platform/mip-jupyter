@@ -1,4 +1,5 @@
 import os
+import sys
 
 from platform_token_service import PlatformTokenHandler, fresh_access_token
 from platform_token_utils import normalize_cpu, normalize_memory
@@ -203,6 +204,30 @@ async def inject_platform_token(spawner):
 # it from /api/platform-token instead.
 if _spawner_mode != "operator":
     c.Spawner.pre_spawn_hook = inject_platform_token
+
+# Stop user servers idle for longer than this many seconds (0 = never). Files stay on
+# the user's volume; open tabs, running cells and the AI chat count as activity.
+_cull_idle_timeout = int(_env("JUPYTERHUB_CULL_IDLE_TIMEOUT", "0") or 0)
+if _cull_idle_timeout > 0:
+    c.JupyterHub.services = [
+        {
+            "name": "idle-culler",
+            "command": [
+                sys.executable,
+                "-m",
+                "jupyterhub_idle_culler",
+                f"--timeout={_cull_idle_timeout}",
+                f"--cull-every={int(_env('JUPYTERHUB_CULL_EVERY', '600'))}",
+            ],
+        }
+    ]
+    c.JupyterHub.load_roles = [
+        {
+            "name": "idle-culler",
+            "scopes": ["list:users", "read:users:activity", "read:servers", "delete:servers"],
+            "services": ["idle-culler"],
+        }
+    ]
 
 c.JupyterHub.extra_handlers = [
     (r"/api/platform-token", PlatformTokenHandler),
