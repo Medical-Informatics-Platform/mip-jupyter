@@ -10,7 +10,7 @@ Filesystem is memory.
 Always rehydrate before continuing.
 ```
 
-`.llm/` augments the existing repository instructions. It does not replace `AGENTS.md` or `docs/llm/`.
+`.llm/` augments the existing repository instructions. It does not replace `AGENTS.md` or `python-client/mip/agent_docs/`.
 
 ## What Belongs Here
 
@@ -49,7 +49,7 @@ Use this order when instructions or state disagree:
 ```text
 system/developer instructions
 > repo AGENTS.md
-> docs/llm static playbook
+> python-client/mip/agent_docs static playbook
 > active user request
 > active objective file
 > state.md
@@ -67,8 +67,8 @@ Follow the existing MIP Jupyter startup flow first, then use runtime state only 
 
 1. Obey system/developer instructions.
 2. Read `AGENTS.md`.
-3. Read `docs/llm/INDEX.md`.
-4. Read one relevant `docs/llm/wiki/` page.
+3. Read `python-client/mip/agent_docs/INDEX.md`.
+4. Read one relevant `python-client/mip/agent_docs/wiki/` page.
 5. Read `.llm/project.md` if present.
 6. Read `.llm/chats/<chat_id>/state.md` if present.
 7. Read `.llm/chats/<chat_id>/handoff.md` if present.

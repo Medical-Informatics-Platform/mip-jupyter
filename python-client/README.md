@@ -79,7 +79,7 @@ uv run python verify_script.py
 - Tests use `unittest` + `unittest.mock`, patching `requests.Session`; no live HTTP.
 - Add a regression test with every behavior fix.
 - When the public API changes, update [expected_library.md](expected_library.md),
-  `docs/user/api-reference.md`, and `docs/llm/wiki/03-mip-client-api.md` together.
+  `docs/user/api-reference.md`, and `python-client/mip/agent_docs/wiki/03-mip-client-api.md` together.
 
 ## Release
 

@@ -20,7 +20,7 @@ When the public API changes, update these together:
 
 - `python-client/expected_library.md`
 - `docs/user/api-reference.md`
-- `docs/llm/wiki/03-mip-client-api.md`
+- `python-client/mip/agent_docs/wiki/03-mip-client-api.md`
 
 Notebook outputs in `workspace/Welcome.ipynb` should be re-run after API changes. Prefer committed outputs for onboarding notebooks (documented convention).
 

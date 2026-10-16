@@ -17,11 +17,11 @@
      when the cluster mounts the shared examples (`scripts/smoke-singleuser-image.sh`
      mounts a fixture)
    - `docs/` contains user guides from `docs/user/` (quickstart, api-reference, troubleshooting)
-   - `docs/llm/` is **not** in the file browser
+   - `python-client/mip/agent_docs/` is **not** in the file browser
    - `import mip` succeeds in a notebook
    - `python-client/` and Dockerfiles are not in the file browser
 6. Verify agent docs in image (operator):
-   - `ls /opt/mip-agent-docs/llm/wiki/` includes `00-agent-workspace.md`
+   - `ls /opt/mip-agent-python-client/mip/agent_docs/wiki/` includes `00-agent-workspace.md`
    - `agent_read_guide` MCP tool returns content
 7. Hub integration smoke (in `mip/deployment`):
    - User login → `Welcome.ipynb` → `Client.from_env()` succeeds

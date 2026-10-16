@@ -88,7 +88,7 @@ COPY --from=build --chown=1000:100 /opt/venv /opt/venv
 
 COPY --chown=1000:100 workspace/ "${MIP_WORKSPACE_TEMPLATE}/"
 COPY --chown=1000:100 docs/user/ "${MIP_WORKSPACE_TEMPLATE}/docs/"
-COPY --chown=1000:100 docs/llm/ /opt/mip-agent-docs/llm/
+COPY --chown=1000:100 python-client/mip/agent_docs/ /opt/mip-agent-python-client/mip/agent_docs/
 COPY --chown=1000:100 AGENTS.md /opt/mip-agent-docs/
 COPY --chmod=755 docker/singleuser/entrypoint.sh /usr/local/bin/mip-jupyter-entrypoint.sh
 

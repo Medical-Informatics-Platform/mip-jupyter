@@ -5,8 +5,8 @@ Runtime memory support for LLM/Codex work in this repository.
 
 ## Static instruction sources
 - `AGENTS.md`
-- `docs/llm/INDEX.md`
-- `docs/llm/wiki/*.md`
+- `python-client/mip/agent_docs/INDEX.md`
+- `python-client/mip/agent_docs/wiki/*.md`
 
 ## Runtime state
 - `.llm/chats/<chat_id>/`
