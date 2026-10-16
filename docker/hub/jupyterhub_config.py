@@ -103,7 +103,11 @@ if _spawner_mode == "operator":
     c.NotebookSpawner.start_timeout = 300
 else:
     c.JupyterHub.spawner_class = "kubespawner.KubeSpawner"
-c.KubeSpawner.image = _env("JUPYTER_SINGLEUSER_IMAGE", "hbpmip/mip-jupyter:dev")
+# Set to false to keep user servers running across hub restarts, so updates do not
+# interrupt notebooks. Only with a persistent hub database (mip/deployment mounts
+# one): a hub that loses its database forgets the servers it left running.
+c.JupyterHub.cleanup_servers = _env_bool("JUPYTERHUB_CLEANUP_SERVERS", True)
+c.KubeSpawner.image =_env("JUPYTER_SINGLEUSER_IMAGE", "hbpmip/mip-jupyter:dev")
 c.KubeSpawner.image_pull_policy = _env("JUPYTER_IMAGE_PULL_POLICY", "Always")
 c.KubeSpawner.namespace = _env("JUPYTERHUB_NAMESPACE", os.environ.get("POD_NAMESPACE", "default"))
 
