@@ -2,18 +2,18 @@
 name = "mip-jupyter-dev"
 version = "0.1.0"
 description = "Local development runner for mip-jupyter notebooks"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.11,<3.13"
 dependencies = [
     "mip-client[notebook]",
     "jupyterlab>=4.6.4,<4.7",
     "jupyter-ai>=3,<4",
     "notebook>=7.6.3,<8.0.0",
     "ipykernel>=6.0.0,<8.0.0",
-    "nbconvert>=7.0.0,<8.0.0",
+    "nbconvert>=7.17.2,<8.0.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=9.0.3,<10.0.0", "pytest-asyncio>=1.2.0,<2.0.0"]
+dev = ["pytest>=9.1.1,<10.0.0", "pytest-asyncio>=1.4.0,<2.0.0"]
 
 [project.scripts]
 mip-notebook = "dev.notebook:main"

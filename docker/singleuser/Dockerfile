@@ -4,8 +4,8 @@
 # hadolint global ignore=DL3006,DL3008,SC2016
 
 # Base images are pinned by digest; bump the digest to pick up base fixes.
-FROM python:3.12-slim-trixie@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 AS build
-COPY --from=ghcr.io/astral-sh/uv:0.11@sha256:77280f2f771df71f90786c314fe1bbc1e023feac652969bbf139c280babf2eb7 /uv /usr/local/bin/uv
+FROM python:3.12-slim-trixie@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704 AS build
+COPY --from=ghcr.io/astral-sh/uv:0.13@sha256:32a7bb39b496babbd997b0a39a4d66c126bdaf5661b302bf6f06abda8deca6ff /uv /usr/local/bin/uv
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     UV_LINK_MODE=copy \
@@ -20,7 +20,7 @@ COPY python-client/pyproject.toml ./python-client/
 # nosemgrep: semgrep-rules.dockerfile.best-practice.missing-pip-no-cache-dir
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev --no-install-project --no-install-package mip-client \
-    && uv pip install --python /opt/venv/bin/python pip==26.2.1
+    && uv pip install --python /opt/venv/bin/python pip==26.2.2
 
 # Our packages: seconds to rebuild. uv.sources marks mip-client editable for local dev;
 # --no-editable copies it into the venv. --inexact keeps pip.
@@ -46,12 +46,12 @@ ADD --checksum=sha256:70f6126de278bb854f7df50cbd748b58fd01a34a5e58f16976990064bb
 # nosemgrep: semgrep-rules.dockerfile.best-practice.missing-image-version
 FROM codex-acp-${TARGETARCH} AS codex-acp-tgz
 
-FROM python:3.12-slim-trixie@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 AS codex-acp
+FROM python:3.12-slim-trixie@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704 AS codex-acp
 RUN --mount=from=codex-acp-tgz,source=/acp.tgz,target=/tmp/acp.tgz \
     tar -xzf /tmp/acp.tgz -C /tmp package/bin/codex-acp \
     && install -m 755 /tmp/package/bin/codex-acp /usr/local/bin/codex-acp
 
-FROM python:3.12-slim-trixie@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
+FROM python:3.12-slim-trixie@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704
 
 ENV PYTHONUNBUFFERED=1 \
     PLATFORM_BACKEND_URL=http://platform-backend:8080/services \
