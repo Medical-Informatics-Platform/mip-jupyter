@@ -1,6 +1,6 @@
 # Add entries here only with a CVE id, a reason, and a removal condition.
 vulnerabilities:
-  # pip 26.2.1 (latest) vendors these copies under pip/_vendor. Trivy reports
+  # pip 26.2.2 (latest) vendors these copies under pip/_vendor. Trivy reports
   # them with no file path, so scope by the exact vendored purl; the venv's own
   # setuptools/urllib3/msgpack are newer and stay scanned. Remove once a pip
   # release re-vendors fixed versions.
@@ -27,17 +27,10 @@ vulnerabilities:
   - id: CVE-2026-97688
     purls:
       - "pkg:pypi/urllib3@2.7.0"
-    statement: "pip-vendored urllib3, used only by pip itself; no fixed pip release yet (pip 26.2.1 is latest)."
+    statement: "pip-vendored urllib3, used only by pip itself; no fixed pip release yet (pip 26.2.2 is latest)."
     expires: 2026-12-31
   - id: CVE-2026-59890
     purls:
       - "pkg:pypi/setuptools@70.3.0"
     statement: "pip-vendored pkg_resources only; the vulnerable sdist/MANIFEST.in code is not vendored by pip."
-    expires: 2026-12-31
-  # JupyterHub bundles moment for its browser UI; no JupyterHub release (5.5.2,
-  # 6.0.1) ships moment >= 2.31.0 yet. Remove once one does.
-  - id: CVE-2026-17495
-    purls:
-      - "pkg:npm/moment@2.30.1"
-    statement: "Path traversal needs server-side locale loading from disk (Node.js require); the bundled browser copy never does that."
     expires: 2026-12-31
