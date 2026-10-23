@@ -205,6 +205,14 @@ async def inject_platform_token(spawner):
 if _spawner_mode != "operator":
     c.Spawner.pre_spawn_hook = inject_platform_token
 
+# No longer granted: laptops sign in with Keycloak, and /api/platform-token answers
+# only users' own servers. Still defined because JupyterHub fails to read tokens that
+# carry an unknown scope, and earlier releases put it in laptop tokens (30 days at
+# most) and in the tokens of servers started then; drop it once those are gone.
+c.JupyterHub.custom_scopes = {
+    "custom:mip-platform-token": {"description": "Unused. Get your MIP platform access token."},
+}
+
 # Stop user servers idle for longer than this many seconds (0 = never). Files stay on
 # the user's volume; open tabs, running cells and the AI chat count as activity.
 _cull_idle_timeout = int(_env("JUPYTERHUB_CULL_IDLE_TIMEOUT", "0") or 0)
