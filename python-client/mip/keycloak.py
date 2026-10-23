@@ -203,10 +203,35 @@ def login(
     else:
         raise MipBackendError("Sign-in timed out. Run `mip login` again.")
 
+    return _replace(mip_url, _entry(endpoints, tokens["refresh_token"]))
+
+
+def _session_id(token: str) -> str | None:
+    """Keycloak's session id (sid) in a refresh token; None when it cannot be read."""
+    parts = token.split(".")
+    if len(parts) != 3:
+        return None
+    try:
+        payload = json.loads(base64.urlsafe_b64decode(parts[1] + "=" * (-len(parts[1]) % 4)))
+    except ValueError:
+        return None
+    sid = payload.get("sid") if isinstance(payload, dict) else None
+    return sid if isinstance(sid, str) else None
+
+
+def _replace(mip_url: str, entry: dict[str, str]) -> dict[str, Any]:
+    """Save a new sign-in for mip_url and revoke the one it replaces, so re-login rotates."""
+
     data = _load()
-    data[mip_url] = _entry(endpoints, tokens["refresh_token"])
+    old = data.get(mip_url)
+    data[mip_url] = entry
     _save(data)
-    return {"ok": True, "signed_in_to": mip_url, "saved": str(CREDENTIALS_FILE)}
+    result: dict[str, Any] = {"ok": True, "signed_in_to": mip_url, "saved": str(CREDENTIALS_FILE)}
+    # Only another Keycloak session: the same one (a token pasted again) must stay alive.
+    old_sid = _session_id(old["refresh_token"]) if old else None
+    if old_sid and old_sid != _session_id(entry["refresh_token"]):
+        result["previous_revoked"] = _revoke(old)
+    return result
 
 
 def save_token(mip_url: str, backend_url: str, refresh_token: str) -> dict[str, Any]:
@@ -215,10 +240,7 @@ def save_token(mip_url: str, backend_url: str, refresh_token: str) -> dict[str, 
     entry = _entry(_discover(backend_url), refresh_token.strip())
     tokens = _renew(entry)
     entry["refresh_token"] = tokens.get("refresh_token") or entry["refresh_token"]
-    data = _load()
-    data[mip_url] = entry
-    _save(data)
-    return {"ok": True, "signed_in_to": mip_url, "saved": str(CREDENTIALS_FILE)}
+    return _replace(mip_url, entry)
 
 
 def access_token(mip_url: str) -> str:

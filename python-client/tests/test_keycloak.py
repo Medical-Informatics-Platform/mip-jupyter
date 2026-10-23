@@ -159,6 +159,57 @@ class TestLogin(_CredentialsTestCase):
         self.assertFalse(self.file.exists())
 
 
+def _jwt(**claims):
+    body = base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip("=")
+    return f"h.{body}.s"
+
+
+@patch("mip.keycloak.requests.post")
+@patch("mip.keycloak.requests.get")
+class TestRelogin(_CredentialsTestCase):
+    """Signing in again rotates: the sign-in it replaces is revoked at Keycloak."""
+
+    def test_new_session_revokes_the_one_it_replaces(self, get_mock, post_mock):
+        old = _jwt(sid="old-session")
+        self.write({MIP_URL: _entry(old)})
+        get_mock.side_effect = _get()
+        post_mock.side_effect = [
+            _resp(200, {"access_token": "acc", "refresh_token": _jwt(sid="new-session")}),
+            _resp(200),
+        ]
+
+        result = keycloak.save_token(MIP_URL, f"{MIP_URL}/services", _jwt(sid="new-session"))
+
+        self.assertTrue(result["previous_revoked"])
+        revoke = post_mock.call_args_list[1]
+        self.assertEqual(revoke.args[0], OIDC["revocation_endpoint"])
+        self.assertEqual(revoke.kwargs["data"]["token"], old)
+        self.assertEqual(self.read()[MIP_URL]["refresh_token"], _jwt(sid="new-session"))
+
+    def test_same_session_pasted_again_is_not_revoked(self, get_mock, post_mock):
+        self.write({MIP_URL: _entry(_jwt(sid="s1", n=1))})
+        get_mock.side_effect = _get()
+        post_mock.return_value = _resp(200, {"access_token": "acc", "refresh_token": _jwt(sid="s1", n=2)})
+
+        result = keycloak.save_token(MIP_URL, f"{MIP_URL}/services", _jwt(sid="s1", n=1))
+
+        self.assertNotIn("previous_revoked", result)
+        self.assertEqual(post_mock.call_count, 1)  # only the check, no revocation
+
+    def test_unreachable_keycloak_still_saves_the_new_sign_in(self, get_mock, post_mock):
+        self.write({MIP_URL: _entry(_jwt(sid="old-session"))})
+        get_mock.side_effect = _get()
+        post_mock.side_effect = [
+            _resp(200, {"access_token": "acc", "refresh_token": _jwt(sid="new-session")}),
+            keycloak.requests.ConnectionError("down"),
+        ]
+
+        result = keycloak.save_token(MIP_URL, f"{MIP_URL}/services", _jwt(sid="new-session"))
+
+        self.assertFalse(result["previous_revoked"])
+        self.assertEqual(self.read()[MIP_URL]["refresh_token"], _jwt(sid="new-session"))
+
+
 @patch("mip.keycloak.requests.post")
 class TestAccessToken(_CredentialsTestCase):
     def test_refresh_returns_access_token_and_keeps_rotated_refresh_token(self, post_mock):
