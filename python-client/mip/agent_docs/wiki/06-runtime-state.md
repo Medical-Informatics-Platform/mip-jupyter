@@ -6,12 +6,12 @@
 
 ## Role of `.llm/`
 
-`.llm/` is runtime memory from actual agent work. It augments static instructions; it does not replace `AGENTS.md` or this `docs/llm` playbook.
+`.llm/` is runtime memory from actual agent work. It augments static instructions; it does not replace `AGENTS.md` or this `python-client/mip/agent_docs` playbook.
 
 Keep this distinction:
 
 - `AGENTS.md` - mandatory repo-level startup rules
-- `docs/llm/` - static operating manual
+- `python-client/mip/agent_docs/` - static operating manual
 - `.llm/` - runtime session/task memory
 - `scratch/` - notebooks, experiments, temporary work
 
@@ -19,7 +19,7 @@ Keep this distinction:
 
 1. Obey system/developer instructions.
 2. `AGENTS.md` is already supplied as the repository bootstrap.
-3. Read `docs/llm/INDEX.md` and one relevant `docs/llm/wiki/` page.
+3. Read `python-client/mip/agent_docs/INDEX.md` and one relevant `python-client/mip/agent_docs/wiki/` page.
 4. Read `.llm/project.md` if present.
 5. Read `.llm/chats/<chat_id>/state.md` when continuing a known chat.
 6. Read `.llm/chats/<chat_id>/handoff.md` if present.

@@ -10,7 +10,7 @@ Deployment and runtime orchestration for MIP Jupyter live in the **`mip/deployme
 | JupyterHub image and config | `docker/hub/` |
 | `mip` Python client | `python-client/` (installed in images) |
 | User workspace template | `workspace/` + `docs/user/` → `/home/jovyan/work` |
-| Agent wiki (not user-visible) | `docs/llm/` + `AGENTS.md` → `/opt/mip-agent-docs/` |
+| Agent wiki (not user-visible) | `python-client/mip/agent_docs/` + `AGENTS.md` → `/opt/mip-agent-docs/` |
 
 ## Environment contract
 
@@ -92,5 +92,5 @@ Full checklist: [`release-process.md`](release-process.md).
 2. `import mip` and `mip.Client.from_env()` succeed.
 3. File browser shows `Welcome.ipynb`, `docs/`, `scratch/` only, plus `examples/`
    when the cluster mounts the shared examples.
-4. `docs/llm/` and `python-client/` are **not** visible to users.
+4. `python-client/` (including the agent wiki) is **not** visible in the file browser.
 5. Jupyter AI agents can call `agent_read_guide` (reads `/opt/mip-agent-docs/`).

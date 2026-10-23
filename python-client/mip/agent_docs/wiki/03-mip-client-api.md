@@ -2,7 +2,7 @@
 
 **Read when:** API syntax for filters, preprocessing, pipeline, or results.
 
-**Skip if:** `01` / `02` already covers it. Read [expected_library.md](../../../python-client/expected_library.md)
+**Skip if:** `01` / `02` already covers it. Read [expected_library.md](../../../expected_library.md)
 only when this page is insufficient.
 
 ## Rules

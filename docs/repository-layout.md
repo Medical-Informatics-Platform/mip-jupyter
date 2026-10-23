@@ -15,6 +15,7 @@ mip-jupyter/
 
   python-client/            # mip-client package (import `mip`), self-contained
     mip/                    # Installed as package in production images
+      agent_docs/           # Agent wiki, shipped in the wheel and to /opt/mip-agent-docs/
     tests/
     expected_library.md     # API contract for client development
     pyproject.toml
@@ -33,7 +34,6 @@ mip-jupyter/
       api-reference.md
       troubleshooting.md
       workspace-guide.md
-    llm/                    # Agent wiki (shipped to /opt/mip-agent-docs/, not user-visible)
     architecture.md
     repository-layout.md
     release-process.md
@@ -56,7 +56,7 @@ mip-jupyter/
 
 - `python-client/` source tree
 - Dockerfiles and Hub configuration
-- `docs/llm/` agent wiki (`/opt/mip-agent-docs/`)
+- `python-client/mip/agent_docs/` agent wiki (`/opt/mip-agent-docs/`)
 - `dev/` tooling
 - Repository CI files
 

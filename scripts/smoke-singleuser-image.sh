@@ -41,6 +41,8 @@ docker exec "${CONTAINER}" sh -lc '
   test -x /tmp/mip-codex-home/bin/mip-shell-guard
   test ! -f /tmp/mip-codex-home/bin/codex-acp || test -x /tmp/mip-codex-home/bin/codex-acp
   ! grep -q "\[mcp_servers" /tmp/mip-codex-home/config.toml || exit 1
+  test -f /opt/mip-agent-docs/llm/wiki/00-agent-workspace.md
+  command -v mip >/dev/null
   test -d /home/jovyan/work/scratch
   test -L /home/jovyan/work/examples
   grep -q "# %%" /home/jovyan/work/examples/algorithm_examples.py
