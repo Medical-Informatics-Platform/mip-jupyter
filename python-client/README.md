@@ -31,6 +31,12 @@ uv sync --extra dev --extra notebook
 `mip.Client.from_env()` reads `PLATFORM_BACKEND_URL` (for example
 `https://<host>/services`) and `MIP_TOKEN`.
 
+From your own computer, set `MIP_URL=https://<host>` and either paste a token from the
+portal's account page into `mip login --token` (or set `MIP_API_TOKEN`), or run `mip login`
+to sign in in your browser (Keycloak device flow). The client renews access by itself;
+`mip logout` signs out. See
+[Use MIP from your own computer](https://github.com/Medical-Informatics-Platform/mip-jupyter/blob/master/docs/user/remote-access.md).
+
 ## `mip` command for AI assistants
 
 `mip guide`, `mip env-status`, `mip catalog`, `mip data-model LABEL`,

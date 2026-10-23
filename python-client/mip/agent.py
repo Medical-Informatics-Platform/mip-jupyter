@@ -197,17 +197,24 @@ def env_status(token_dir: Path | None = None) -> dict[str, Any]:
     def configured(*names: str) -> bool:
         return any(os.getenv(name) for name in names)
 
-    backend_configured = configured("PLATFORM_BACKEND_URL", "MIP_BASE_URL")
-    # In the hosted notebook the hub hands the token out on first use.
-    folder = token_dir or Path.cwd()
-    token_configured = (
-        configured("PLATFORM_TOKEN", "MIP_TOKEN")
-        or (configured("JUPYTERHUB_API_URL") and configured("JUPYTERHUB_API_TOKEN"))
-        or any(
-            token_file.is_file() and token_file.stat().st_size > 0
-            for token_file in (folder / "mip_token", folder / ".mip_token")
+    backend_configured = configured("PLATFORM_BACKEND_URL", "MIP_BASE_URL", "MIP_URL")
+    if configured("MIP_URL"):
+        # Same rule as Client.from_env(): from your own computer only MIP_API_TOKEN or
+        # `mip login` counts.
+        from .keycloak import is_signed_in
+
+        token_configured = configured("MIP_API_TOKEN") or is_signed_in(os.environ["MIP_URL"].rstrip("/"))
+    else:
+        # In the hosted notebook the hub hands the token out on first use.
+        folder = token_dir or Path.cwd()
+        token_configured = (
+            configured("PLATFORM_TOKEN", "MIP_TOKEN")
+            or (configured("JUPYTERHUB_API_URL") and configured("JUPYTERHUB_API_TOKEN"))
+            or any(
+                token_file.is_file() and token_file.stat().st_size > 0
+                for token_file in (folder / "mip_token", folder / ".mip_token")
+            )
         )
-    )
     return {
         "ok": True,
         "connection_configured": bool(backend_configured),

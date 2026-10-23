@@ -84,6 +84,7 @@ Full checklist: [`release-process.md`](release-process.md).
 - **Image tags in Hub** — update `JUPYTER_SINGLEUSER_IMAGE` in deployment values or `docker/hub/jupyterhub_config.py`
 - **Keycloak / auth** — `mip/deployment` (Hub refuses to start without `KEYCLOAK_CLIENT_ID`; `JUPYTERHUB_USE_DUMMY_AUTH=1` enables dummy auth for local testing only)
 - **Platform token refresh** — Hub `platform_token_service.py`; validate in deployment integration tests
+- **Laptop sign-in** — tokens from the portal's account page and `mip login` use a public Keycloak client named by the backend's `KEYCLOAK_CLI_CLIENT_ID` (redirect URI `<portal>/account`, web origin `<portal>`, device grant on), not JupyterHub; its Keycloak session limits set how long a laptop stays signed in.
 - **Shared examples** — `EXAMPLES_CLAIM` on the notebook operator; bound-volume rule and rollback in [`notebook-operator.md`](notebook-operator.md)
 
 ## Smoke test after rollout
