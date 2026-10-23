@@ -2,7 +2,7 @@
 
 You can run the `mip` client on your own computer or on a server. It acts as you,
 with the same data access you have in the MIP portal. You sign in once; the
-client then renews its access by itself for about 30 days.
+client then renews its access by itself, for up to 6 months.
 
 ## 1. Install the client
 
@@ -30,8 +30,9 @@ Open the link in any browser, even on another device, and sign in. Check that th
 page shows the same code, then approve. Never approve a code that someone else
 sent you: whoever started that sign-in would get your access.
 
-Either way, the sign-in lasts about 30 days of not being used (the portal's
-operators set the exact limits). Then sign in again.
+Either way, a sign-in lasts at most 6 months, and ends after 30 days without
+use (the portal's operators set the exact limits). Then sign in again: signing
+in again on a computer ends that computer's previous sign-in.
 
 ## 3. Connect
 
@@ -70,6 +71,10 @@ mip logout
 This ends the sign-in at the MIP sign-in service and deletes it from your
 computer. If `MIP_API_TOKEN` is set, that token is ended too; then remove it from
 your environment. Do this when you no longer need it, or if the file may have leaked.
+
+Without that computer, open your sign-in account (the link at the end of the
+"Use MIP from your own computer" section of your MIP account page) and remove
+"MIP command line" under Applications. This ends the sign-in of every computer.
 
 ## Errors
 

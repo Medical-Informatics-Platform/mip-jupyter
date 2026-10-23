@@ -82,7 +82,7 @@ Rejected:
 | P1 | Release the backend with the token checks (issuer, `azp` = own clients) and deploy it to **every** federation, with `KEYCLOAK_CLI_CLIENT_ID` empty | S1, S2 |
 | P2 | Give handson its own platform client (`mipfed_handson` exists) | S3 |
 | P3 | Optional: set `roles` to Optional on every platform client (smaller tokens; not needed for safety once P1 is done) | S2 |
-| P4 | Decide a realm-wide offline-session maximum | S4 |
+| P4 | Per laptop client, Client Offline Session Max 180 days (realm: Offline Session Max Limited on, realm max 3650 days so other clients are unaffected) | S4 |
 
 P1 is safe on its own: the portal and JupyterHub use the platform client, so
 they keep working; laptop sign-in stays off until step 5 below. One behaviour
@@ -123,7 +123,7 @@ No upkeep afterwards: users and roles are managed on `P` as today.
 | S1 | **Released backends (10.2.0) accept any token of realm `MIP`** and take roles from `authorities`, `realm_access` and every client's `resource_access`. A token from one federation (portal, notebook or laptop) gets data on every other federation, under the role names it carries (e.g. `RESEARCH_DATASET_ALL`). Notebook users can already read their token, so this exists today; laptop sign-in makes tokens easier to carry around. From the code, not tested live. | **Critical** | Code ready. Open until P1 is deployed everywhere; laptop sign-in is off meanwhile. |
 | S2 | **Platform-client tokens likely carry the audience of every client the user has roles on** (the `roles` scope is Default on them, and its audience mapper adds them; laptop tokens did this until `roles` became Optional). Even upgraded backends would then accept another federation's portal or notebook token, and trust its `authorities`, which hold the *issuing* federation's roles. | **High** | Fixed in code: the backend now accepts only `azp` = own clients and ignores `aud`. Takes effect with P1. |
 | S3 | **handson and hbpmip.link share `mippublic`**, so their tokens are valid on each other. | Medium | Open. P2. |
-| S4 | **Offline tokens have no hard expiry**: realm idle 30 days, no maximum. A leaked token works as long as it is used. | Medium | Open. P5; meanwhile `mip logout`, admin session revocation, or disabling `mip-cli-F` (kills all laptop sign-ins of that federation). |
+| S4 | **Offline tokens had no hard expiry**: realm idle 30 days, no maximum, so a leaked token worked as long as it was used. | Medium | Laptop sign-ins now last at most 6 months (P4); signing in again revokes the replaced sign-in; users can end all their laptop sign-ins in the Keycloak account console (linked from the account page); admins can disable `mip-cli-F`. |
 | S5 | **Token on users' machines.** The file is plain text (mode 0600); `MIP_API_TOKEN` is inherited by child processes and AI assistants; users can paste it in the wrong place (happened in testing; that token was revoked). | Medium | Mitigated by docs and revocation. Option: OS keychain later. |
 | S6 | **Device-code phishing**: an attacker starts a sign-in and sends a user the code. | Low–medium | Warning in `mip login` and docs; codes live 10 minutes. Option: switch the device grant off if portal tokens are enough. |
 | S7 | **Token shown in the portal page**, readable by injected script while displayed. | Low | Shown once, not stored; PKCE, `state`, exact redirect URI. Option: Content-Security-Policy. |
