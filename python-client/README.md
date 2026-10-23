@@ -31,6 +31,14 @@ uv sync --extra dev --extra notebook
 `mip.Client.from_env()` reads `PLATFORM_BACKEND_URL` (for example
 `https://<host>/services`) and `MIP_TOKEN`.
 
+## `mip` command for AI assistants
+
+`mip guide`, `mip env-status`, `mip catalog`, `mip data-model LABEL`,
+`mip search-variables LABEL TEXT` and `mip algorithms` print compact JSON for AI
+assistants. `mip agent init` writes an `AGENTS.md` that routes an assistant to
+them. The guide pages ship in `mip/agent_docs/`; the code is in `mip/agent.py` and
+`mip/cli.py`.
+
 ## API overview
 
 | Object | Purpose |
@@ -74,7 +82,7 @@ uv run python verify_script.py
 - Tests use `unittest` + `unittest.mock`, patching `requests.Session`; no live HTTP.
 - Add a regression test with every behavior fix.
 - When the public API changes, update [expected_library.md](expected_library.md),
-  `docs/user/api-reference.md`, and `docs/llm/wiki/03-mip-client-api.md` together.
+  `docs/user/api-reference.md`, and `python-client/mip/agent_docs/wiki/03-mip-client-api.md` together.
 
 ## Release
 

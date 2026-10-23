@@ -146,6 +146,24 @@ class HubAuthConfigTests(unittest.TestCase):
             config.JupyterHub.authenticator_class, "oauthenticator.generic.GenericOAuthenticator"
         )
 
+    def test_servers_are_stopped_on_hub_restart_unless_disabled(self):
+        self.assertTrue(self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1").JupyterHub.cleanup_servers)
+        config = self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1", JUPYTERHUB_CLEANUP_SERVERS="false")
+        self.assertFalse(config.JupyterHub.cleanup_servers)
+
+    def test_idle_culler_runs_only_when_a_timeout_is_set(self):
+        config = self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1")
+        self.assertNotIn("services", config.JupyterHub)
+
+        config = self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1", JUPYTERHUB_CULL_IDLE_TIMEOUT="3600")
+        [service] = config.JupyterHub.services
+        self.assertEqual(service["name"], "idle-culler")
+        self.assertIn("--timeout=3600", service["command"])
+        self.assertIn("--cull-every=600", service["command"])
+        role = next(r for r in config.JupyterHub.load_roles if r["name"] == "idle-culler")
+        self.assertEqual(role["services"], ["idle-culler"])
+        self.assertIn("delete:servers", role["scopes"])
+
 
 if __name__ == "__main__":
     unittest.main()

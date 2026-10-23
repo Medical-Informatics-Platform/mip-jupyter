@@ -21,6 +21,7 @@ RUN npm --prefix /usr/local/lib update --ignore-scripts --no-audit --no-fund fol
 # oauthlib and Mako are JupyterHub dependencies, pinned past its versions for CVE fixes.
 RUN pip install --no-cache-dir --disable-pip-version-check \
         jupyterhub-kubespawner==7.1.0 \
+        jupyterhub-idle-culler==2.0.0 \
         oauthenticator==17.4.0 \
         oauthlib==4.0.0 \
         Mako==1.4.3

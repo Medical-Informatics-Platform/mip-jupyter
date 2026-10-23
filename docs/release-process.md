@@ -17,7 +17,7 @@
      when the cluster mounts the shared examples (`scripts/smoke-singleuser-image.sh`
      mounts a fixture)
    - `docs/` contains user guides from `docs/user/` (quickstart, api-reference, troubleshooting)
-   - `docs/llm/` is **not** in the file browser
+   - `python-client/mip/agent_docs/` is **not** in the file browser
    - `import mip` succeeds in a notebook
    - `python-client/` and Dockerfiles are not in the file browser
 6. Verify agent docs in image (operator):
