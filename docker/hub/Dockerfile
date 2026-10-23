@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # Pinned by digest so pulls stay reproducible and CHP/Node stay in the base;
 # bump the digest to pick up base fixes.
-FROM jupyterhub/jupyterhub:5.5.2@sha256:1c38e6f0178c49b7b5fde7f119596a6fc8aecd66dc304403f5c1f25cfd843b5a
+FROM jupyterhub/jupyterhub:5.5.4@sha256:d2b824f33fdbf5c5f8a9616be38cc77de624cf23c23a7b2fd441dd60ba50e87f
 
 # Base tag lags on OS security fixes (e.g. openssl). /srv/venv has its own
 # pip/setuptools/wheel, so the stale Ubuntu copies can go.
@@ -11,6 +11,12 @@ RUN apt-get update \
     && apt-get purge -y python3-pip python3-pip-whl python3-setuptools python3-setuptools-whl python3-wheel \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# The base ships configurable-http-proxy's tree with follow-redirects 1.16.0
+# (CVE-2026-111755/111756). `npm update` moves it to the latest release within
+# http-proxy-3's semver range; scripts are skipped so the base's postinstall is not re-run.
+RUN npm --prefix /usr/local/lib update --ignore-scripts --no-audit --no-fund follow-redirects \
+    && rm -rf /root/.npm
 
 # oauthlib and Mako are JupyterHub dependencies, pinned past its versions for CVE fixes.
 RUN pip install --no-cache-dir --disable-pip-version-check \
