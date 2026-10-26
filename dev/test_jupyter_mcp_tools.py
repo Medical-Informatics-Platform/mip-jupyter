@@ -23,7 +23,7 @@ class FakeVariable:
         self.label = label
 
     def summary(self):
-        return {"code": self.code, "label": self.label, "type": "integer"}
+        return {"code": self.code, "label": self.label, "type": "discrete"}
 
 
 class FakeVariables:
@@ -44,7 +44,7 @@ class FakeDataModel:
         return [{"code": "clinical", "label": "Clinical"}]
 
     def list_variables(self):
-        return [{"code": "nihss", "label": "NIHSS", "type": "integer"}]
+        return [{"code": "nihss", "label": "NIHSS", "type": "discrete"}]
 
 
 class FakeCatalog:
