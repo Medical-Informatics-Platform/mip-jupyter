@@ -16,11 +16,11 @@ MOCK_DATA_MODELS = [
                 "code": "clinical",
                 "label": "Clinical",
                 "variables": [
-                    {"code": "age", "label": "Age", "type": "real"},
+                    {"code": "age", "label": "Age", "type": "continuous"},
                     {"code": "sex", "label": "Sex", "type": "nominal", "enumerations": {"M": "Male", "F": "Female"}},
                 ],
                 "groups": [
-                    {"code": "cognitive", "label": "Cognitive", "variables": [{"code": "mmse", "label": "MMSE", "type": "integer"}]}
+                    {"code": "cognitive", "label": "Cognitive", "variables": [{"code": "mmse", "label": "MMSE", "type": "discrete"}]}
                 ],
             }
         ],
@@ -45,6 +45,21 @@ class TestCatalog(unittest.TestCase):
         self.assertEqual(dm.variables["Sex"].categories(), ["Male", "Female"])
         self.assertEqual(dm.datasets["ADNI"].variables()[0].label, "Age")
         self.assertTrue(dm.datasets["ADNI"].has_variable(dm.variables["MMSE"]))
+
+    def test_variable_kind_follows_cde_type(self):
+        from mip.variables import Variable
+
+        for cde_type in ["continuous", "discrete"]:
+            variable = Variable({"code": "v", "type": cde_type})
+            self.assertTrue(variable.is_numerical())
+            self.assertFalse(variable.is_categorical())
+        for cde_type in ["nominal", "ordinal", "binary"]:
+            variable = Variable({"code": "v", "type": cde_type})
+            self.assertTrue(variable.is_categorical())
+            self.assertFalse(variable.is_numerical())
+        legacy = Variable({"code": "v", "type": "real", "sql_type": "real", "is_categorical": "false"})
+        self.assertFalse(legacy.is_numerical())
+        self.assertFalse(legacy.is_categorical())
 
     def test_search_methods_return_native_lists(self):
         transport = MagicMock()
