@@ -78,7 +78,7 @@ class _EvalVar:
         self.label = label
 
     def summary(self) -> dict[str, Any]:
-        return {"code": self.code, "label": self.label, "type": "integer"}
+        return {"code": self.code, "label": self.label, "type": "discrete"}
 
 
 class _EvalVariables:
@@ -99,7 +99,7 @@ class _EvalDataModel:
         return [{"code": "clinical", "label": "Clinical"}]
 
     def list_variables(self) -> list[dict[str, Any]]:
-        return [{"code": "nihss", "label": "NIHSS", "type": "integer"}]
+        return [{"code": "nihss", "label": "NIHSS", "type": "discrete"}]
 
 
 class _EvalCatalog:
