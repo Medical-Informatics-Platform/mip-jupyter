@@ -8,11 +8,16 @@ import json
 import os
 import time
 import unittest
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from jupyterhub import orm, roles, scopes
+from jupyterhub.app import JupyterHub
+from jupyterhub.utils import hash_token
+from tornado import web
 from traitlets.config.loader import PyFileConfigLoader
 
-from platform_token_service import fresh_access_token
+from platform_token_service import PlatformTokenHandler, fresh_access_token
 from platform_token_utils import (
     decode_jwt_exp,
     normalize_cpu,
@@ -163,6 +168,89 @@ class HubAuthConfigTests(unittest.TestCase):
         role = next(r for r in config.JupyterHub.load_roles if r["name"] == "idle-culler")
         self.assertEqual(role["services"], ["idle-culler"])
         self.assertIn("delete:servers", role["scopes"])
+
+
+class LegacyScopeTests(unittest.TestCase):
+    """Tokens issued while laptops used hub tokens carry custom:mip-platform-token."""
+
+    def test_tokens_with_the_old_scope_still_resolve(self):
+        with patch.dict(os.environ, {"JUPYTERHUB_USE_DUMMY_AUTH": "1"}, clear=True):
+            app = JupyterHub(db_url="sqlite://")
+            app.load_config_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), "jupyterhub_config.py"))
+        app.init_db()
+        app.authenticator = app.authenticator_class(parent=app)
+        asyncio.run(app.init_role_creation())
+        user = orm.User(name="alice")
+        app.db.add(user)
+        app.db.commit()
+        roles.assign_default_roles(app.db, user)
+        token = orm.APIToken.find(app.db, user.new_api_token(scopes=["read:users!user"]))
+        token.scopes = ["custom:mip-platform-token"]
+        app.db.commit()
+
+        granted = scopes.parse_scopes(scopes.get_scopes_for(token))
+
+        self.assertNotIn("custom:mip-platform-token", granted)
+
+
+class PlatformTokenHandlerTests(unittest.TestCase):
+    SERVER_TOKEN = "server-token"
+
+    @staticmethod
+    def _user(*server_tokens):
+        # A server that never started has no OAuth client yet.
+        user = MagicMock()
+        user.orm_spawners = {
+            str(i): SimpleNamespace(oauth_client=token and SimpleNamespace(secret=hash_token(token)))
+            for i, token in enumerate(server_tokens)
+        }
+        return user
+
+    @staticmethod
+    def _get(user, raw_token):
+        handler = MagicMock(current_user=user)
+        handler.get_auth_token.return_value = raw_token
+        asyncio.run(PlatformTokenHandler.get(handler))
+        return handler
+
+    @patch("platform_token_service.fresh_access_token")
+    def test_server_token_gets_owner_access_token(self, fresh_mock):
+        token = _make_jwt(int(time.time()) + 3600)
+        fresh_mock.return_value = token
+        user = self._user(None, "other-server", self.SERVER_TOKEN)
+        handler = self._get(user, self.SERVER_TOKEN)
+        fresh_mock.assert_called_once_with(user)
+        handler.write.assert_called_once_with({"access_token": token})
+
+    @patch("platform_token_service.fresh_access_token")
+    def test_only_server_tokens_are_accepted(self, fresh_mock):
+        user = self._user(self.SERVER_TOKEN)
+        for name, raw in {"browser session": None, "token made on /hub/token": "laptop-token"}.items():
+            with self.subTest(name), self.assertRaises(web.HTTPError) as ctx:
+                self._get(user, raw)
+            self.assertEqual(ctx.exception.status_code, 403)
+        fresh_mock.assert_not_called()
+
+    @patch("platform_token_service.fresh_access_token")
+    def test_unauthenticated_is_rejected(self, fresh_mock):
+        with self.assertRaises(web.HTTPError) as ctx:
+            self._get(None, None)
+        self.assertEqual(ctx.exception.status_code, 403)
+        fresh_mock.assert_not_called()
+
+    @patch("platform_token_service.fresh_access_token")
+    def test_service_is_rejected(self, fresh_mock):
+        with self.assertRaises(web.HTTPError) as ctx:
+            self._get(orm.Service(name="svc"), "service-token")
+        self.assertEqual(ctx.exception.status_code, 403)
+        fresh_mock.assert_not_called()
+
+    @patch("platform_token_service.fresh_access_token")
+    def test_missing_platform_token_is_401(self, fresh_mock):
+        fresh_mock.return_value = None
+        with self.assertRaises(web.HTTPError) as ctx:
+            self._get(self._user(self.SERVER_TOKEN), self.SERVER_TOKEN)
+        self.assertEqual(ctx.exception.status_code, 401)
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ from collections import defaultdict
 
 from jupyterhub import orm
 from jupyterhub.apihandlers.base import APIHandler
+from jupyterhub.utils import compare_token
 from tornado import web
 
 from platform_token_utils import refresh_access_token, token_is_expired
@@ -31,8 +32,24 @@ async def fresh_access_token(user) -> str | None:
         return token
 
 
+def _is_server_token(user, raw_token: str | None) -> bool:
+    """True when raw_token is the JUPYTERHUB_API_TOKEN of one of the user's servers.
+
+    JupyterHub keeps each server's token, hashed, as the secret of that server's OAuth
+    client. Tokens users create on /hub/token never match one: from their own computer
+    users sign in with Keycloak (`mip login`), not through the hub.
+    """
+    if not raw_token:
+        return False
+    for orm_spawner in user.orm_spawners.values():
+        client = orm_spawner.oauth_client
+        if client is not None and client.secret and compare_token(client.secret, raw_token):
+            return True
+    return False
+
+
 class PlatformTokenHandler(APIHandler):
-    """Return the platform-backend Bearer token for the authenticated user server.
+    """Return the platform-backend Bearer token to one of the user's own servers.
 
     Uses APIHandler (in-process token auth) instead of HubAuthenticated because this
     endpoint is registered on the hub itself; HubAuthenticated would HTTP-call the
@@ -45,6 +62,8 @@ class PlatformTokenHandler(APIHandler):
             raise web.HTTPError(403, "Not authenticated")
         if isinstance(user, orm.Service):
             raise web.HTTPError(403, "Only user server tokens are supported")
+        if not _is_server_token(user, self.get_auth_token()):
+            raise web.HTTPError(403, "Only your notebook servers can get the platform token")
 
         access_token = await fresh_access_token(user)
         if not access_token:
