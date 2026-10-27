@@ -12,6 +12,11 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# HTTP2Shell (CVE-2026-111497): the system node that runs configurable-http-proxy
+# links Ubuntu's libbrotli1, and the base (Ubuntu 24.04) ships 1.1.0-2build2, which is vulnerable.
+# The upgrade above installs Ubuntu's fix, 1.1.0-2ubuntu0.1; fail the build if it did not.
+RUN dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libbrotli1)" ge 1.1.0-2ubuntu0.1
+
 # oauthlib and Mako are JupyterHub dependencies, pinned past its versions for CVE fixes.
 RUN pip install --no-cache-dir --disable-pip-version-check \
         jupyterhub-kubespawner==7.1.0 \
