@@ -6,14 +6,16 @@ import json
 import os
 import tempfile
 import threading
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-from mip import keycloak
+from mip import Client, keycloak
 from mip.exceptions import MipBackendError
 from mip.exceptions import MipConfigurationError
+from mip.transport import Transport
 
 MIP_URL = "https://mip.example"
 ISSUER = "https://idp.example/realms/MIP"
@@ -369,3 +371,123 @@ class TestPortalToken(_CredentialsTestCase):
         self.assertFalse(result["env_token_revoked"])
         self.assertNotIn("from-env", json.dumps(result))
 
+
+class TestFromEnvRemote(_CredentialsTestCase):
+    def test_remembered_portal_needs_no_mip_url(self):
+        self.write({MIP_URL: _entry(), "default": MIP_URL})
+        with patch.dict(os.environ, {}, clear=True), patch("mip.keycloak.access_token", return_value="acc") as fresh:
+            transport = Client.from_env()._transport
+            self.assertEqual(transport.base_url, f"{MIP_URL}/services/")
+            self.assertEqual(transport.refresh(), "acc")
+        fresh.assert_called_once_with(MIP_URL)
+
+    def test_notebook_ignores_the_remembered_portal(self):
+        self.write({MIP_URL: _entry(), "default": MIP_URL})
+        env = {"PLATFORM_BACKEND_URL": "http://platform-backend:8080/services", "MIP_TOKEN": "t"}
+        with patch.dict(os.environ, env, clear=True):
+            transport = Client.from_env()._transport
+        self.assertEqual(transport.base_url, "http://platform-backend:8080/services/")
+        self.assertEqual(transport.token, "t")
+        self.assertIsNone(transport.refresh)
+
+    def test_signed_in_portal_uses_keycloak_and_ignores_leftover_tokens(self):
+        self.write({MIP_URL: _entry()})
+        env = {"MIP_URL": f"{MIP_URL}/", "MIP_TOKEN": "other-federation", "PLATFORM_TOKEN": "other-federation"}
+        with patch.dict(os.environ, env, clear=True), patch("mip.keycloak.access_token", return_value="acc") as fresh:
+            transport = Client.from_env()._transport
+            self.assertEqual(transport.base_url, f"{MIP_URL}/services/")
+            self.assertIsNone(transport.token)
+            self.assertEqual(transport.refresh(), "acc")
+        fresh.assert_called_once_with(MIP_URL)
+
+    def test_env_token_comes_first_and_needs_mip_url(self):
+        self.write({MIP_URL: _entry()})
+        with patch.dict(os.environ, {"MIP_URL": MIP_URL, "MIP_API_TOKEN": "from-env"}, clear=True), patch(
+            "mip.keycloak.env_token_refresher", return_value=lambda: "acc"
+        ) as refresher:
+            transport = Client.from_env()._transport
+            self.assertEqual(transport.refresh(), "acc")
+        refresher.assert_called_once_with(f"{MIP_URL}/services", "from-env")
+        with patch.dict(os.environ, {"MIP_API_TOKEN": "from-env", "MIP_BASE_URL": "http://b/services"}, clear=True):
+            with self.assertRaises(MipConfigurationError) as ctx:
+                Client.from_env()
+        self.assertIn("MIP_URL", str(ctx.exception))
+        self.assertNotIn("from-env", str(ctx.exception))
+
+    def test_not_signed_in_asks_for_mip_login(self):
+        with patch.dict(os.environ, {"MIP_URL": MIP_URL, "MIP_TOKEN": "leftover"}, clear=True):
+            with self.assertRaises(MipConfigurationError) as ctx:
+                Client.from_env()
+        self.assertIn("mip login", str(ctx.exception))
+
+    def test_backend_must_be_on_the_mip_url_host(self):
+        for extra in (
+            {"PLATFORM_BACKEND_URL": "https://other.example/services"},
+            {"MIP_BASE_URL": "https://mip.example:8443/services"},
+        ):
+            with self.subTest(extra=extra), patch.dict(os.environ, {"MIP_URL": MIP_URL, **extra}, clear=True):
+                with self.assertRaises(MipConfigurationError):
+                    Client.from_env()
+        self.write({MIP_URL: _entry()})
+        env = {"MIP_URL": MIP_URL, "PLATFORM_BACKEND_URL": "https://MIP.example:443/api/services"}
+        with patch.dict(os.environ, env, clear=True):
+            self.assertEqual(Client.from_env()._transport.base_url, "https://MIP.example:443/api/services/")
+
+    def test_plain_http_only_for_localhost(self):
+        for url in ("http://mip.example", "http://localhost.evil.example", "http://localhost@evil.example"):
+            with self.subTest(url=url), patch.dict(os.environ, {"MIP_URL": url}, clear=True):
+                with self.assertRaises(MipConfigurationError):
+                    Client.from_env()
+        for host in ("localhost:8080", "127.0.0.1", "[::1]:8080"):
+            self.write({f"http://{host}": _entry()})
+            with self.subTest(host=host), patch.dict(os.environ, {"MIP_URL": f"http://{host}"}, clear=True):
+                self.assertEqual(Client.from_env()._transport.base_url, f"http://{host}/services/")
+
+    def test_url_credentials_are_refused_and_never_shown(self):
+        for url in ("http://user:pw-secret@mip.example", "https://user:pw-secret@mip.example"):
+            self.write({url: _entry()})
+            with self.subTest(url=url), patch.dict(os.environ, {"MIP_URL": url}, clear=True):
+                with self.assertRaises(MipConfigurationError) as ctx:
+                    Client.from_env()
+                self.assertNotIn("pw-secret", str(ctx.exception))
+
+
+@patch("mip.transport.requests.get")
+@patch("mip.transport.requests.Session")
+class TestTransportRefresh(unittest.TestCase):
+    def _backend(self, session_cls, *statuses):
+        responses = []
+        for status in statuses:
+            response = MagicMock(status_code=status, content=b'{"ok": true}')
+            response.json.return_value = {"ok": True}
+            responses.append(response)
+        session = session_cls.return_value
+        session.headers = {}
+        session.request.side_effect = responses
+        return session
+
+    def test_keycloak_token_is_fetched_once_and_never_from_the_hub(self, session_cls, hub_get):
+        session = self._backend(session_cls, 200, 200)
+        fresh = _make_jwt(int(time.time()) + 300)
+        refresh = MagicMock(return_value=fresh)
+        env = {"JUPYTERHUB_API_URL": "https://hub.example/hub/api", "JUPYTERHUB_API_TOKEN": "leftover"}
+        with patch.dict(os.environ, env, clear=True):
+            transport = Transport(f"{MIP_URL}/services", refresh=refresh)
+            transport.get("/data-models")
+            transport.get("/algorithms")
+            self.assertNotIn("MIP_TOKEN", os.environ)
+        refresh.assert_called_once_with()
+        self.assertEqual(session.headers["Authorization"], f"Bearer {fresh}")
+        hub_get.assert_not_called()
+
+    def test_rejected_token_is_renewed_once(self, session_cls, hub_get):
+        session = self._backend(session_cls, 401, 200)
+        refresh = MagicMock(return_value=_make_jwt(int(time.time()) + 300))
+        transport = Transport(f"{MIP_URL}/services", refresh=refresh)
+        self.assertEqual(transport.get("/data-models"), {"ok": True})
+        self.assertEqual(refresh.call_count, 2)
+        self.assertEqual(session.request.call_count, 2)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -6,7 +6,7 @@ import base64
 import json
 import os
 import time
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urljoin
 
 import requests
@@ -24,6 +24,7 @@ class Transport:
         *,
         timeout: float = 30.0,
         allow_redirects: bool | None = None,
+        refresh: Callable[[], str] | None = None,
     ):
         if not isinstance(base_url, str) or not base_url.strip():
             raise ValueError("base_url must be a non-empty string.")
@@ -33,6 +34,9 @@ class Transport:
         if allow_redirects is None:
             allow_redirects = os.getenv("PLATFORM_BACKEND_ALLOW_REDIRECTS", "0") in ("1", "true", "True")
         self.allow_redirects = bool(allow_redirects)
+        # Returns a fresh access token (from your own computer: mip.keycloak). Without
+        # it, the hub hands one out when running in the MIP notebook.
+        self.refresh = refresh
         self.session = requests.Session()
         if token:
             self.session.headers.update({"Authorization": f"Bearer {token}"})
@@ -58,7 +62,7 @@ class Transport:
         self._raise_if_expired_token()
         try:
             response = self._request_once(method, url, **kwargs)
-            if response.status_code == 401 and self._maybe_refresh_token_via_jupyterhub():
+            if response.status_code == 401 and self._renew_token():
                 response = self._request_once(method, url, **kwargs)
         except requests.RequestException as exc:
             raise MipBackendError(f"Backend request failed: {method} {url}: {exc}") from exc
@@ -103,16 +107,22 @@ class Transport:
     def _raise_if_expired_token(self) -> None:
         if not self.token:
             # Under the notebook operator the token is not in the pod env; the
-            # hub hands it out on first use.
-            self._maybe_refresh_token_via_jupyterhub()
+            # hub hands it out on first use. From your own computer, Keycloak does.
+            self._renew_token()
             return
         if self._token_is_expired(self.token):
-            if self._maybe_refresh_token_via_jupyterhub():
+            if self._renew_token():
                 return
             raise MipBackendError(
                 "The API token is expired and could not be refreshed automatically. "
                 "Re-login or restart the notebook server, or provide a fresh token."
             )
+
+    def _renew_token(self) -> bool:
+        if self.refresh is not None:
+            self.set_token(self.refresh())
+            return True
+        return self._maybe_refresh_token_via_jupyterhub()
 
     def _maybe_refresh_token_via_jupyterhub(self) -> bool:
         api_url = os.getenv("JUPYTERHUB_API_URL", "").rstrip("/")
