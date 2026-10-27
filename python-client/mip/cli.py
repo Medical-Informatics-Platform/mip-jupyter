@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
 from typing import Any
 
-from . import agent
+from . import agent, client, keycloak
+from .exceptions import MipError
 
 AGENTS_TEMPLATE = agent.DOCS_ROOT / "AGENTS.laptop.md"
 CLAUDE_MD = "@AGENTS.md\n"
@@ -17,6 +20,44 @@ DATA_NOTICE = (
     "AI assistants send what they read, analysis results included, to their provider. "
     "Check that your MIP data-use terms allow this before you use one."
 )
+
+
+def _signin(action, url: str | None = None) -> dict[str, Any]:
+    try:
+        remote = client.remote_urls(url)
+        if remote is None:
+            return {"ok": False, "error": "Name your MIP portal: mip login https://<host> (or set MIP_URL)."}
+        return action(*remote)
+    except MipError as exc:
+        return {"ok": False, "error": str(exc)}
+
+
+def login(token: bool = False, url: str | None = None) -> dict[str, Any]:
+    """Sign in to the MIP portal `url` (default: MIP_URL, or the last one) and save the sign-in.
+
+    Without `token`, in your browser (it shows a link and a code). With it, by pasting a
+    token created on the portal's account page, for machines without a browser. The portal
+    is remembered, so programs need no MIP_URL afterwards.
+    """
+
+    if token:
+        value = getpass.getpass("Paste the token from the portal's account page (input is hidden): ").strip()
+        if not value:
+            return {"ok": False, "error": "No token entered."}
+        return _signin(lambda mip_url, backend_url: keycloak.save_token(mip_url, backend_url, value), url)
+
+    def show(text: str) -> None:
+        # stdout carries the JSON result only.
+        print(text, file=sys.stderr, flush=True)
+
+    return _signin(lambda mip_url, backend_url: keycloak.login(mip_url, backend_url, show=show), url)
+
+
+def logout() -> dict[str, Any]:
+    """Revoke and forget this computer's sign-in to its portal, and the token in MIP_API_TOKEN."""
+
+    env_token = os.getenv("MIP_API_TOKEN")
+    return _signin(lambda mip_url, backend_url: keycloak.logout(mip_url, backend_url, env_token))
 
 
 def agent_init(directory: str | Path = ".", *, force: bool = False) -> dict[str, Any]:
@@ -45,6 +86,10 @@ def _parser() -> argparse.ArgumentParser:
     guide.add_argument("--limit", type=int, default=5)
 
     commands.add_parser("env-status", help="Is the MIP connection configured? (never shows values)")
+    login_cmd = commands.add_parser("login", help="Sign in to your MIP portal, once per computer")
+    login_cmd.add_argument("url", nargs="?", help="Your MIP portal, e.g. https://<host> (default: MIP_URL, or the last one)")
+    login_cmd.add_argument("--token", action="store_true", help="Paste a token from the portal's account page instead")
+    commands.add_parser("logout", help="Revoke and forget this computer's sign-in to its portal")
 
     catalog = commands.add_parser("catalog", help="Data models you can access")
     catalog.add_argument("--limit", type=int, default=agent.DEFAULT_CATALOG_LIMIT)
@@ -83,6 +128,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         return agent.read_guide(args.page, args.topic, args.max_chars)
     if command == "env-status":
         return agent.env_status()
+    if command == "login":
+        return login(token=args.token, url=args.url)
+    if command == "logout":
+        return logout()
     if command == "catalog":
         return agent.catalog_summary(args.limit)
     if command == "data-model":

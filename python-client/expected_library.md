@@ -80,6 +80,7 @@ Runnable companion notebook: `workspace/Welcome.ipynb`.
 ```text
 PLATFORM_BACKEND_URL or MIP_BASE_URL
 PLATFORM_TOKEN or MIP_TOKEN
+MIP_URL (default: the portal `mip login` signed in to last) with MIP_API_TOKEN (token from the portal's account page) or a `mip login` sign-in in ~/.config/mip/credentials.json (remote: backend {MIP_URL}/services, same host only)
 PLATFORM_BACKEND_TIMEOUT
 PLATFORM_BACKEND_ALLOW_REDIRECTS
 ```

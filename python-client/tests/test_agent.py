@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from mip import agent, cli
+from mip.exceptions import MipConfigurationError
 
 
 class _Variable:
@@ -112,6 +113,47 @@ class TestGuide(unittest.TestCase):
 
 
 class TestEnvStatus(unittest.TestCase):
+    def test_remote_setup_counts_only_mip_login(self):
+        # Client.from_env() ignores the others on the MIP_URL path, so they must not count.
+        env = {
+            "MIP_URL": "https://mip.example/",
+            "MIP_TOKEN": "x",
+            "JUPYTERHUB_API_URL": "https://mip.example/notebook/hub/api",
+            "JUPYTERHUB_API_TOKEN": "x",
+        }
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, env, clear=True):
+            credentials = Path(tmp, "credentials.json")
+            (Path(tmp) / "mip_token").write_text("leftover", encoding="utf-8")
+            with patch("mip.keycloak.CREDENTIALS_FILE", credentials):
+                self.assertFalse(agent.env_status(token_dir=Path(tmp))["ready"])
+                credentials.write_text(
+                    json.dumps({"https://mip.example": {"refresh_token": "TOP_SECRET"}}), encoding="utf-8"
+                )
+                status = agent.env_status(token_dir=Path(tmp))
+        self.assertTrue(status["ready"])
+        self.assertNotIn("TOP_SECRET", json.dumps(status))
+
+    def test_remembered_portal_counts_without_mip_url(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {}, clear=True):
+            credentials = Path(tmp, "credentials.json")
+            credentials.write_text(
+                json.dumps({"https://mip.example": {"refresh_token": "TOP_SECRET"}, "default": "https://mip.example"}),
+                encoding="utf-8",
+            )
+            with patch("mip.keycloak.CREDENTIALS_FILE", credentials):
+                status = agent.env_status(token_dir=Path(tmp))
+        self.assertTrue(status["ready"])
+        self.assertNotIn("TOP_SECRET", json.dumps(status))
+
+    def test_remote_setup_counts_mip_api_token(self):
+        env = {"MIP_URL": "https://mip.example", "MIP_API_TOKEN": "TOP_SECRET"}
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, env, clear=True), patch(
+            "mip.keycloak.CREDENTIALS_FILE", Path(tmp, "credentials.json")
+        ):
+            status = agent.env_status(token_dir=Path(tmp))
+        self.assertTrue(status["ready"])
+        self.assertNotIn("TOP_SECRET", json.dumps(status))
+
     def test_nothing_configured_is_not_ready(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {}, clear=True):
             status = agent.env_status(token_dir=Path(tmp))
@@ -155,6 +197,53 @@ class TestCli(unittest.TestCase):
         with patch.object(agent, "search_variables", return_value={"ok": True}) as search:
             _run_cli("search-variables", "Stroke", "blood", "pressure", "--version", "3.7")
         search.assert_called_once_with("Stroke", "blood pressure", "3.7", agent.DEFAULT_VARIABLE_SEARCH_LIMIT)
+
+    def test_login_needs_a_portal(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {}, clear=True), patch(
+            "mip.keycloak.CREDENTIALS_FILE", Path(tmp, "credentials.json")
+        ):
+            code, result = _run_cli("login")
+        self.assertEqual(code, 1)
+        self.assertIn("mip login https://", result["error"])
+
+    def test_login_takes_the_portal_as_argument(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {}, clear=True), patch(
+            "mip.keycloak.CREDENTIALS_FILE", Path(tmp, "credentials.json")
+        ), patch("mip.keycloak.login", return_value={"ok": True}) as login, contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(_run_cli("login", "https://mip.example/")[0], 0)
+        self.assertEqual(login.call_args.args, ("https://mip.example", "https://mip.example/services"))
+
+    def test_login_shows_instructions_on_stderr_and_json_on_stdout(self):
+        def fake_login(mip_url, backend_url, *, show):
+            show("open https://idp.example/device")
+            return {"ok": True, "signed_in_to": mip_url}
+
+        err = io.StringIO()
+        with patch.dict(os.environ, {"MIP_URL": "https://mip.example/"}, clear=True), patch(
+            "mip.keycloak.login", side_effect=fake_login
+        ) as login, contextlib.redirect_stderr(err):
+            code, result = _run_cli("login")
+        self.assertEqual(code, 0)
+        self.assertEqual(result["signed_in_to"], "https://mip.example")
+        self.assertIn("idp.example/device", err.getvalue())
+        self.assertEqual(login.call_args.args, ("https://mip.example", "https://mip.example/services"))
+
+    def test_login_token_pastes_hidden_and_saves(self):
+        with patch.dict(os.environ, {"MIP_URL": "https://mip.example"}, clear=True), patch(
+            "getpass.getpass", return_value=" pasted \n"
+        ), patch("mip.keycloak.save_token", return_value={"ok": True}) as save:
+            self.assertEqual(_run_cli("login", "--token"), (0, {"ok": True}))
+        save.assert_called_once_with("https://mip.example", "https://mip.example/services", "pasted")
+        with patch.dict(os.environ, {"MIP_URL": "https://mip.example"}, clear=True), patch(
+            "getpass.getpass", return_value=""
+        ):
+            self.assertEqual(_run_cli("login", "--token")[0], 1)
+
+    def test_sign_in_errors_are_json(self):
+        with patch.dict(os.environ, {"MIP_URL": "https://mip.example"}, clear=True), patch(
+            "mip.keycloak.logout", side_effect=MipConfigurationError("no")
+        ):
+            self.assertEqual(_run_cli("logout"), (1, {"ok": False, "error": "no"}))
 
     def test_agent_init_writes_files_and_refuses_to_overwrite(self):
         with tempfile.TemporaryDirectory() as tmp:

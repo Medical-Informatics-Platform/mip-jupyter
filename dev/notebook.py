@@ -218,7 +218,8 @@ def main(argv: list[str] | None = None) -> int:
 
     env = os.environ.copy()
     env.setdefault("MIP_JUPYTER_ROOT", str(work))
-    if not env.get("PLATFORM_BACKEND_URL") and not env.get("MIP_BASE_URL"):
+    # MIP_URL (remote federation) derives its own backend; a local default would win over it.
+    if not any(env.get(name) for name in ("PLATFORM_BACKEND_URL", "MIP_BASE_URL", "MIP_URL")):
         env["PLATFORM_BACKEND_URL"] = DEFAULT_BACKEND_URL
     url = f"http://{args.host}:{args.port}/lab/tree/{notebook}?token={args.token}"
 
