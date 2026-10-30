@@ -114,6 +114,11 @@ else:
 # interrupt notebooks. Only with a persistent hub database (mip/deployment mounts
 # one): a hub that loses its database forgets the servers it left running.
 c.JupyterHub.cleanup_servers = _env_bool("JUPYTERHUB_CLEANUP_SERVERS", True)
+# A database left by an older JupyterHub (0.2.x images run 5.5, this one 6.1) is upgraded on
+# start instead of the hub exiting with "run `jupyterhub upgrade-db`". The SQLite file is
+# copied to jupyterhub.sqlite.<timestamp> next to it first; going back to an older image needs
+# that copy restored.
+c.JupyterHub.upgrade_db = _env_bool("JUPYTERHUB_UPGRADE_DB", True)
 c.KubeSpawner.image = _env("JUPYTER_SINGLEUSER_IMAGE", "hbpmip/mip-jupyter:dev")
 c.KubeSpawner.image_pull_policy = _env("JUPYTER_IMAGE_PULL_POLICY", "Always")
 c.KubeSpawner.namespace = _env("JUPYTERHUB_NAMESPACE", os.environ.get("POD_NAMESPACE", "default"))
