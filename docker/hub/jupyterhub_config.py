@@ -95,19 +95,30 @@ else:
 c.Authenticator.enable_auth_state = True
 
 # "operator": the hub only creates Notebook resources and the MIP notebook
-# operator builds the pods (docs/notebook-operator.md). "kubespawner": the hub
-# creates pods itself and needs a Role on pods/PVCs.
+# operator builds the pods (docs/notebook-operator.md). "operator-api": the
+# same, through the operator's spawn API, so the hub holds no Kubernetes
+# credential. "kubespawner": the hub creates pods itself and needs a Role on
+# pods/PVCs.
 _spawner_mode = _env("JUPYTERHUB_SPAWNER", "kubespawner").strip().lower()
+_operator_modes = ("operator", "operator-api")
 if _spawner_mode == "operator":
     c.JupyterHub.spawner_class = "notebook_spawner.NotebookSpawner"
     # Covers a cold pull of the ~700 MB notebook image.
     c.NotebookSpawner.start_timeout = 300
+elif _spawner_mode == "operator-api":
+    c.JupyterHub.spawner_class = "notebook_api_spawner.NotebookAPISpawner"
+    c.NotebookAPISpawner.start_timeout = 300
 else:
     c.JupyterHub.spawner_class = "kubespawner.KubeSpawner"
 # Set to false to keep user servers running across hub restarts, so updates do not
 # interrupt notebooks. Only with a persistent hub database (mip/deployment mounts
 # one): a hub that loses its database forgets the servers it left running.
 c.JupyterHub.cleanup_servers = _env_bool("JUPYTERHUB_CLEANUP_SERVERS", True)
+# A database left by an older JupyterHub (0.2.x images run 5.5, this one 6.1) is upgraded on
+# start instead of the hub exiting with "run `jupyterhub upgrade-db`". The SQLite file is
+# copied to jupyterhub.sqlite.<timestamp> next to it first; going back to an older image needs
+# that copy restored.
+c.JupyterHub.upgrade_db = _env_bool("JUPYTERHUB_UPGRADE_DB", True)
 c.KubeSpawner.image = _env("JUPYTER_SINGLEUSER_IMAGE", "hbpmip/mip-jupyter:dev")
 c.KubeSpawner.image_pull_policy = _env("JUPYTER_IMAGE_PULL_POLICY", "Always")
 c.KubeSpawner.namespace = _env("JUPYTERHUB_NAMESPACE", os.environ.get("POD_NAMESPACE", "default"))
@@ -202,7 +213,7 @@ async def inject_platform_token(spawner):
 
 # With the operator the token is not put in the pod env; the mip client fetches
 # it from /api/platform-token instead.
-if _spawner_mode != "operator":
+if _spawner_mode not in _operator_modes:
     c.Spawner.pre_spawn_hook = inject_platform_token
 
 # No longer granted: laptops sign in with Keycloak, and /api/platform-token answers
