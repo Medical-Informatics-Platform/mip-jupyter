@@ -54,7 +54,7 @@ class NotebookSpawner(Spawner):
                 return None
             raise
 
-    async def _delete_and_wait(self, timeout: float) -> None:
+    async def _delete(self) -> None:
         custom, _ = await self._apis()
         try:
             await custom.delete_namespaced_custom_object(
@@ -64,6 +64,9 @@ class NotebookSpawner(Spawner):
         except ApiException as e:
             if e.status != 404:
                 raise
+
+    async def _delete_and_wait(self, timeout: float) -> None:
+        await self._delete()
         loop = asyncio.get_running_loop()
         deadline = loop.time() + timeout
         while await self._get() is not None:
@@ -142,7 +145,20 @@ class NotebookSpawner(Spawner):
 
     async def poll(self):
         nb = await self._get()
-        return None if nb and (nb.get("status") or {}).get("phase") != "Failed" else 1
+        if nb is None:
+            return 1
+        if (nb.get("status") or {}).get("phase") != "Failed":
+            return None
+        # Stopped by itself (File > Shut Down, a crash). JupyterHub calls stop() only for servers
+        # poll() reports running, so the Notebook, its pod and its token Secret would stay until the
+        # next start: delete it now, as KubeSpawner's delete_stopped_pods does. Not waited for;
+        # start() waits for leftovers.
+        if not (nb.get("metadata") or {}).get("deletionTimestamp"):
+            try:
+                await self._delete()
+            except ApiException as e:
+                self.log.warning("delete of stopped Notebook %s failed: %s", self.notebook_name, e.status)
+        return 1
 
     async def stop(self, now=False):
         await self._delete_and_wait(60)

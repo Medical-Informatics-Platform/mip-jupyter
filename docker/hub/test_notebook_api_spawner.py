@@ -172,13 +172,29 @@ class SpawnAPITests(unittest.IsolatedAsyncioTestCase):
         self.fetch.side_effect = [
             _response(200, {"phase": "Running"}),
             _response(200, {"phase": "Pending"}),
-            _response(200, {"phase": "Failed"}),
             _response(404),
         ]
         self.assertIsNone(await self.spawner.poll())
         self.assertIsNone(await self.spawner.poll())
         self.assertEqual(await self.spawner.poll(), 1)
+        self.assertEqual([m for m, _ in self.calls()], ["GET", "GET", "GET"])
+
+    async def test_poll_deletes_a_server_that_stopped_by_itself(self):
+        # JupyterHub skips stop() once poll() reports the server stopped.
+        self.fetch.side_effect = [_response(200, {"phase": "Failed", "message": "exited with code 0"}), _response(202)]
         self.assertEqual(await self.spawner.poll(), 1)
+        self.assertEqual(self.calls(), [("GET", URL), ("DELETE", URL)])
+        self.sleep.assert_not_awaited()
+
+    async def test_poll_does_not_delete_twice(self):
+        self.fetch.side_effect = [_response(200, {"phase": "Failed", "deleting": True})]
+        self.assertEqual(await self.spawner.poll(), 1)
+        self.assertEqual([m for m, _ in self.calls()], ["GET"])
+
+    async def test_poll_reports_stopped_even_if_the_delete_fails(self):
+        self.fetch.side_effect = [_response(200, {"phase": "Failed"}), _response(403, {"error": "forbidden"})]
+        self.assertEqual(await self.spawner.poll(), 1)
+        self.spawner.log.warning.assert_called_once()
 
     async def test_stop_deletes_and_waits_until_gone(self):
         self.fetch.side_effect = [_response(202), _response(200, {"deleting": True}), _response(404)]

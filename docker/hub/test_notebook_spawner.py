@@ -106,11 +106,25 @@ class StartStopTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_poll(self):
         self.custom.get_namespaced_custom_object = AsyncMock(
-            side_effect=[{"status": {"phase": "Running"}}, {"status": {"phase": "Failed"}}, ApiException(status=404)]
+            side_effect=[{"status": {"phase": "Running"}}, ApiException(status=404)]
         )
+        self.custom.delete_namespaced_custom_object = AsyncMock()
         self.assertIsNone(await self.spawner.poll())
         self.assertEqual(await self.spawner.poll(), 1)
+        self.custom.delete_namespaced_custom_object.assert_not_awaited()
+
+    async def test_poll_deletes_a_server_that_stopped_by_itself(self):
+        # JupyterHub skips stop() once poll() reports the server stopped.
+        self.custom.get_namespaced_custom_object = AsyncMock(
+            side_effect=[
+                {"metadata": {}, "status": {"phase": "Failed"}},
+                {"metadata": {"deletionTimestamp": "2026-10-30T15:40:00Z"}, "status": {"phase": "Failed"}},
+            ]
+        )
+        self.custom.delete_namespaced_custom_object = AsyncMock()
         self.assertEqual(await self.spawner.poll(), 1)
+        self.assertEqual(await self.spawner.poll(), 1)
+        self.assertEqual(self.custom.delete_namespaced_custom_object.await_count, 1)
 
 
 if __name__ == "__main__":

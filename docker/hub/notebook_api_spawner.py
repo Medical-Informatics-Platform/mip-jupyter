@@ -166,7 +166,21 @@ class NotebookAPISpawner(Spawner):
 
     async def poll(self):
         status = await self._get()
-        return None if status and status.get("phase") != "Failed" else 1
+        if status is None:
+            return 1
+        if status.get("phase") != "Failed":
+            return None
+        # Stopped by itself (File > Shut Down, a crash). JupyterHub calls stop() only for servers
+        # poll() reports running, so the Notebook, its pod and its token Secret would stay until the
+        # next start: delete it now, as KubeSpawner's delete_stopped_pods does. Not waited for;
+        # start() waits for leftovers.
+        if not status.get("deleting"):
+            code, data = await self._request("DELETE")
+            if code not in (202, 404):
+                self.log.warning(
+                    "spawn API DELETE of stopped %s failed: %s %s", self.notebook_name, code, data.get("error", "")
+                )
+        return 1
 
     async def stop(self, now=False):
         await self._delete_and_wait(DELETE_TIMEOUT)
