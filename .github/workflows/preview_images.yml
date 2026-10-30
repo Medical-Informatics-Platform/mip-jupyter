@@ -1,0 +1,95 @@
+name: Preview images
+
+# Work in progress for a staging cluster (mip-infra-staging): every push to a pull request opened
+# from a branch of this repository builds the three images from the branch head and pushes them
+# to Docker Hub as hbpmip/<image>:pr-<number> (moving) and hbpmip/<image>:sha-<short head sha>
+# (fixed). Staging pins the digest. Pull requests from forks get no registry credentials and are
+# skipped. Releases are published by publish_images.yml, to Docker Hub and Harbor.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Registries use their own credentials; GITHUB_TOKEN only reads.
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-images-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  DOCKER_BUILDKIT: 1
+  # The sha- tag names the branch head, not the merge commit GitHub creates for the run.
+  DOCKER_METADATA_PR_HEAD_SHA: "true"
+
+jobs:
+  build_and_push:
+    name: Build ${{ matrix.image }} preview image and push to Docker Hub
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: mip-jupyter
+            context: .
+            dockerfile: docker/singleuser/Dockerfile
+            cache-scope: singleuser
+          - image: mip-jupyterhub
+            context: .
+            dockerfile: docker/hub/Dockerfile
+            cache-scope: hub
+          - image: mip-notebook-operator
+            context: operator
+            dockerfile: operator/Dockerfile
+            cache-scope: operator
+
+    steps:
+      # The branch head, as staging deploys it, not the merge with the base branch.
+      - name: Check out the pull request head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 #v4.4.1
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f #v4.6.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 #v6.2.0
+        with:
+          images: hbpmip/${{ matrix.image }}
+          tags: |
+            type=ref,event=pr
+            type=sha,prefix=sha-
+
+      # Reads the GHA layer cache of ci.yml and the releases; writes nothing back.
+      - name: Build and push ${{ matrix.image }}
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc #v7.4.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.cache-scope }}
+
+      - name: Pushed references
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          {
+            echo "### hbpmip/${{ matrix.image }}"
+            echo '```'
+            printf '%s\n' "$TAGS" | sed "/^$/d; s/\$/@${DIGEST}/"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
