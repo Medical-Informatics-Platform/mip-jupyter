@@ -104,7 +104,8 @@ jobs:
         run: >-
           docker run --rm -w /etc/jupyterhub
           -v "$PWD/docker/hub/test_notebook_spawner.py:/etc/jupyterhub/test_notebook_spawner.py:ro"
+          -v "$PWD/docker/hub/test_notebook_api_spawner.py:/etc/jupyterhub/test_notebook_api_spawner.py:ro"
           -v "$PWD/docker/hub/test_platform_token_service.py:/etc/jupyterhub/test_platform_token_service.py:ro"
-          mip-jupyterhub:ci python -m unittest test_notebook_spawner test_platform_token_service
+          mip-jupyterhub:ci python -m unittest test_notebook_spawner test_notebook_api_spawner test_platform_token_service
       - name: Single-user image smoke
         run: scripts/smoke-singleuser-image.sh mip-jupyter:ci
