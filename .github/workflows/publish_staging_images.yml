@@ -66,10 +66,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Bump staging image (jupyterhub)
-        uses: Medical-Informatics-Platform/mip/.github/workflows/bump-staging-image.yml@master
+        uses: Medical-Informatics-Platform/mip/.github/workflows/bump-staging-image.yml@fa2515358edf0aee205f5ef6e1b649562b3c425f
         with:
+          branch: ${{ github.ref_name }}
           key: jupyterhub.image.tag
-          image: hbpmip/mip-jupyterhub:${{ github.ref_name }}-${{ github.sha:0:7 }}
+          tag: hbpmip/mip-jupyterhub:${{ github.ref_name }}-${{ github.sha:0:7 }}
         secrets:
           app-id: ${{ secrets.STAGING_BUMP_APP_ID }}
           private-key: ${{ secrets.STAGING_BUMP_APP_PRIVATE_KEY }}
@@ -80,10 +81,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Bump staging image (singleuser)
-        uses: Medical-Informatics-Platform/mip/.github/workflows/bump-staging-image.yml@master
+        uses: Medical-Informatics-Platform/mip/.github/workflows/bump-staging-image.yml@fa2515358edf0aee205f5ef6e1b649562b3c425f
         with:
+          branch: ${{ github.ref_name }}
           key: jupyterhub.singleuser.image.tag
-          image: hbpmip/mip-jupyter:${{ github.ref_name }}-${{ github.sha:0:7 }}
+          tag: hbpmip/mip-jupyter:${{ github.ref_name }}-${{ github.sha:0:7 }}
         secrets:
           app-id: ${{ secrets.STAGING_BUMP_APP_ID }}
           private-key: ${{ secrets.STAGING_BUMP_APP_PRIVATE_KEY }}
