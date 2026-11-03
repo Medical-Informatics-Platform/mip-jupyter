@@ -2,7 +2,7 @@ name: Publish staging images
 
 on:
   push:
-    branches: [staging-a, staging-b]
+    branches: [staging-b, staging-c]
   workflow_dispatch:
 
 concurrency: staging-${{ github.ref_name }}
@@ -12,8 +12,11 @@ permissions:
 
 jobs:
   build:
-    name: Build staging images and push to Docker Hub
+    name: Build ${{ matrix.image }} staging image and push to Docker Hub
     runs-on: ubuntu-latest
+    # Same value from every matrix leg: <branch>-<short sha>.
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     strategy:
       fail-fast: false
       matrix:
@@ -40,13 +43,18 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # Expressions cannot slice strings; the shell can.
+      - name: Staging tag
+        id: tag
+        run: echo "tag=${GITHUB_REF_NAME}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 #v6.2.0
         with:
           images: hbpmip/${{ matrix.image }}
           tags: |
-            type=raw,value=${{ github.ref_name }}-${{ github.sha:0:7 }}
+            type=raw,value=${{ steps.tag.outputs.tag }}
 
       - name: Build ${{ matrix.image }} docker image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc #v7.4.0
@@ -60,32 +68,28 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.cache-scope }}
           cache-to: type=gha,scope=${{ matrix.cache-scope }},mode=max
 
+  # Reusable workflow: called as a job. The chart keys take the tag alone, not the image reference.
   bump-hub:
     name: Bump jupyterhub image tag
     needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Bump staging image (jupyterhub)
-        uses: Medical-Informatics-Platform/mip/.github/workflows/bump-staging-image.yml@fa2515358edf0aee205f5ef6e1b649562b3c425f
-        with:
-          branch: ${{ github.ref_name }}
-          key: jupyterhub.image.tag
-          tag: hbpmip/mip-jupyterhub:${{ github.ref_name }}-${{ github.sha:0:7 }}
-        secrets:
-          app-id: ${{ secrets.STAGING_BUMP_APP_ID }}
-          private-key: ${{ secrets.STAGING_BUMP_APP_PRIVATE_KEY }}
+    uses: Medical-Informatics-Platform/mip/.github/workflows/bump-staging-image.yml@0eff4dd7667262adf39284c7585f2b8ee75dd034 # mip PR #33 (chore/bump-staging-workflow); switch to @master once merged
+    with:
+      branch: ${{ github.ref_name }}
+      key: jupyterhub.image.tag
+      tag: ${{ needs.build.outputs.tag }}
+    secrets:
+      app-id: ${{ secrets.STAGING_BUMP_APP_ID }}
+      private-key: ${{ secrets.STAGING_BUMP_APP_PRIVATE_KEY }}
 
+  # After bump-hub: both commit to the same mip staging branch.
   bump-singleuser:
     name: Bump singleuser image tag
-    needs: bump-hub
-    runs-on: ubuntu-latest
-    steps:
-      - name: Bump staging image (singleuser)
-        uses: Medical-Informatics-Platform/mip/.github/workflows/bump-staging-image.yml@fa2515358edf0aee205f5ef6e1b649562b3c425f
-        with:
-          branch: ${{ github.ref_name }}
-          key: jupyterhub.singleuser.image.tag
-          tag: hbpmip/mip-jupyter:${{ github.ref_name }}-${{ github.sha:0:7 }}
-        secrets:
-          app-id: ${{ secrets.STAGING_BUMP_APP_ID }}
-          private-key: ${{ secrets.STAGING_BUMP_APP_PRIVATE_KEY }}
+    needs: [build, bump-hub]
+    uses: Medical-Informatics-Platform/mip/.github/workflows/bump-staging-image.yml@0eff4dd7667262adf39284c7585f2b8ee75dd034 # mip PR #33 (chore/bump-staging-workflow); switch to @master once merged
+    with:
+      branch: ${{ github.ref_name }}
+      key: jupyterhub.singleuser.image.tag
+      tag: ${{ needs.build.outputs.tag }}
+    secrets:
+      app-id: ${{ secrets.STAGING_BUMP_APP_ID }}
+      private-key: ${{ secrets.STAGING_BUMP_APP_PRIVATE_KEY }}
