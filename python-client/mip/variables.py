@@ -12,6 +12,9 @@ from .labels import enumeration_labels
 from .labels import lookup_by_label
 from .labels import normalize_label
 
+NUMERICAL_TYPES = frozenset({"continuous", "discrete"})
+CATEGORICAL_TYPES = frozenset({"nominal", "ordinal", "binary"})
+
 
 class Variable:
     """One backend data-model variable."""
@@ -78,25 +81,14 @@ class Variable:
             payload["description"] = description
         return payload
 
+    def _type(self) -> str:
+        return str(self._data.get("type") or "").lower()
+
     def is_numerical(self) -> bool:
-        kind = str(self._data.get("type") or self._data.get("sql_type") or "").lower()
-        categorical = str(self._data.get("is_categorical") or "").lower()
-        return categorical not in {"true", "1", "yes"} and kind in {
-            "real",
-            "integer",
-            "int",
-            "float",
-            "double",
-            "numeric",
-            "number",
-        }
+        return self._type() in NUMERICAL_TYPES
 
     def is_categorical(self) -> bool:
-        categorical = str(self._data.get("is_categorical") or "").lower()
-        if categorical in {"true", "1", "yes"}:
-            return True
-        kind = str(self._data.get("type") or "").lower()
-        return kind in {"nominal", "categorical", "ordinal", "text", "string", "boolean", "bool"}
+        return self._type() in CATEGORICAL_TYPES
 
     def categories(self) -> list[str]:
         raw = self._data.get("enumerations") or self._data.get("enums") or []

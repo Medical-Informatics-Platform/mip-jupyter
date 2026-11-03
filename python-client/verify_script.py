@@ -23,8 +23,8 @@ MOCK_DATA_MODELS = [
                 "code": "clinical",
                 "label": "Clinical",
                 "variables": [
-                    {"code": "age", "label": "Age", "type": "real"},
-                    {"code": "mmse", "label": "MMSE", "type": "integer"},
+                    {"code": "age", "label": "Age", "type": "continuous"},
+                    {"code": "mmse", "label": "MMSE", "type": "discrete"},
                     {"code": "diagnosis", "label": "Diagnosis", "type": "nominal"},
                 ],
             }
