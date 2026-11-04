@@ -42,7 +42,7 @@ Use `creator.variable` downstream.
 
 ## Pipeline
 
-**30** typed methods — full catalog in `07-pipeline-algorithms.md`; smoke test
+**31** typed methods — full catalog in `07-pipeline-algorithms.md`; smoke test
 `examples/algorithm_examples.py`.
 
 ```python

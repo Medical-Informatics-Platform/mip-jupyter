@@ -6,6 +6,10 @@
 
 Use `CODEX_REASONING_EFFORT=medium` for this workflow if the default is `low`.
 
+Note: `examples/algorithm_examples.py` and `examples/FERES/feres_analysis.ipynb`
+are not in this repo — they are cloned into your workspace under `examples/`
+(see `dev-contributor.md`). Grep for them only after that clone exists.
+
 Skip this page for a single small notebook tweak — use direct notebook tools
 (`create-notebook` / `append-*` / `edit-cell`) per `04-jupyter-mcp.md`.
 
