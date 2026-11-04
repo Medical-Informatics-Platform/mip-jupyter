@@ -14,9 +14,6 @@ jobs:
   build:
     name: Build ${{ matrix.image }} staging image and push to Docker Hub
     runs-on: ubuntu-latest
-    # Same value from every matrix leg: <branch>-<short sha>.
-    outputs:
-      tag: ${{ steps.tag.outputs.tag }}
     strategy:
       fail-fast: false
       matrix:
@@ -54,7 +51,10 @@ jobs:
         with:
           images: hbpmip/${{ matrix.image }}
           tags: |
+            # Immutable <branch>-<sha> tag plus a moving <branch> tag (staging-b / staging-c)
+            # for Argo CD Image Updater; exact tracked pattern to be confirmed by MIP Infra Staging.
             type=raw,value=${{ steps.tag.outputs.tag }}
+            type=raw,value=${{ github.ref_name }}
 
       - name: Build ${{ matrix.image }} docker image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc #v7.4.0
@@ -67,29 +67,3 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.cache-scope }}
           cache-to: type=gha,scope=${{ matrix.cache-scope }},mode=max
-
-  # Reusable workflow: called as a job. The chart keys take the tag alone, not the image reference.
-  bump-hub:
-    name: Bump jupyterhub image tag
-    needs: build
-    uses: Medical-Informatics-Platform/mip/.github/workflows/bump-staging-image.yml@0eff4dd7667262adf39284c7585f2b8ee75dd034 # mip PR #33 (chore/bump-staging-workflow); switch to @master once merged
-    with:
-      branch: ${{ github.ref_name }}
-      key: jupyterhub.image.tag
-      tag: ${{ needs.build.outputs.tag }}
-    secrets:
-      app-id: ${{ secrets.STAGING_BUMP_APP_ID }}
-      private-key: ${{ secrets.STAGING_BUMP_APP_PRIVATE_KEY }}
-
-  # After bump-hub: both commit to the same mip staging branch.
-  bump-singleuser:
-    name: Bump singleuser image tag
-    needs: [build, bump-hub]
-    uses: Medical-Informatics-Platform/mip/.github/workflows/bump-staging-image.yml@0eff4dd7667262adf39284c7585f2b8ee75dd034 # mip PR #33 (chore/bump-staging-workflow); switch to @master once merged
-    with:
-      branch: ${{ github.ref_name }}
-      key: jupyterhub.singleuser.image.tag
-      tag: ${{ needs.build.outputs.tag }}
-    secrets:
-      app-id: ${{ secrets.STAGING_BUMP_APP_ID }}
-      private-key: ${{ secrets.STAGING_BUMP_APP_PRIVATE_KEY }}
