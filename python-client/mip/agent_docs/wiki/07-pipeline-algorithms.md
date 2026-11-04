@@ -6,7 +6,7 @@
 
 ## Catalog
 
-**30** typed `Pipeline` methods + **4** preprocessing builders. Registry:
+**31** typed `Pipeline` methods + **4** preprocessing builders. Registry:
 `python-client/mip/catalog_registry.py` (`PIPELINE_BACKEND_ALGORITHMS`).
 
 ```python
@@ -15,7 +15,9 @@ client.algorithms().list()
 pipeline.recommend_algorithms()
 ```
 
-Full runnable script: `examples/algorithm_examples.py`.
+Full runnable script: `examples/algorithm_examples.py` (the `examples/` folder is
+not in this repo — it is cloned into your workspace under `examples/`; see
+`dev-contributor.md`).
 
 Preprocessing: `MissingValuesHandler`, `OutlierWinsorizer`,
 `CategoricalColumnCreator`, `LongitudinalTransformer` (via `Pipeline(..., longitudinal=...)`).
@@ -35,6 +37,7 @@ Call typed methods directly — no `Pipeline.run()`. Default `mode="transient"`.
 | `quartiles(variable=...)` | `quartiles` | Quartile summary |
 | `anova_oneway(...)` / `anova_twoway(...)` | `anova_*` | ANOVA |
 | `mann_whitney_u_test(...)` | `binned_mann_whitney_u_test` | Non-parametric two-group |
+| `standardized_mean_difference(...)` | `standardized_mean_difference` | Group effect size (Cohen's d) |
 | `outlier_report(...)` | `outlier_report` | Outlier bounds |
 | `linear_regression(...)` / `_cv(...)` | `linear_regression*` | OLS |
 | `logistic_regression(...)` / `_cv(...)` | `logistic_regression*` | Binary logistic |
