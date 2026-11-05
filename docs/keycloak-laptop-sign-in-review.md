@@ -151,8 +151,8 @@ to every federation (P1) before switching laptop sign-in on anywhere.
 Code changes are on branches, not merged or deployed: `platform-backend`
 `fix/owasp-token-session-hardening`, `platform-ui` `fix/security-headers`,
 `mip-jupyter` `fix/hub-require-platform-role`, `mip`
-`feat/network-policy-and-session-values`, `exaflow` `feat/controller-api-token`
-(built on `fix/controller-modernization-wave3`).
+`feat/network-policy-and-session-values`, `exaflow`
+`feat/controller-api-token-master`.
 
 Tested against a local Keycloak 26 container, not the EBRAINS realm: portal and
 laptop access tokens carry `typ=Bearer`; ID and refresh tokens and another client's
