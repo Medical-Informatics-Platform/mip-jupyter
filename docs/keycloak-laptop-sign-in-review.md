@@ -1,6 +1,6 @@
 # Laptop sign-in with Keycloak: decisions, rollout and security review
 
-Status on 2026-10-23. Companion documents: `keycloak-laptop-sign-in.md` (how it
+Status on 2026-10-23; code state updated 2026-11-05. Companion documents: `keycloak-laptop-sign-in.md` (how it
 works) and `keycloak-laptop-sign-in-plan.md` (the change list).
 
 ## 1. Decisions
@@ -57,8 +57,9 @@ Rejected:
   process, `mip logout` and revocation. Laptop token claims: `azp=mip-cli-handson`,
   `aud=mippublic`, `authorities` = the three `mippublic` roles, no
   `resource_access` or `realm_access`.
-- **Code**: uncommitted on `mip-jupyter` `feat/remote-access`, `platform-backend`
-  and `platform-ui` `feat/remote-api-token`, `mip` `feat/keycloak-cli-client`.
+- **Code**: on `master` of `mip-jupyter`, `platform-backend` and `platform-ui`. The
+  chart change is on `mip` `combined/keycloak-cli-and-jupyterhub-spawner`, not yet
+  on `master`.
 - **Other federations**: backend `10.2.0`, hub `0.2.1`, no laptop client.
 
 ## 3. Rolling out to every federation
@@ -140,7 +141,7 @@ to every federation (P1) before switching laptop sign-in on anywhere.
 
 ## 5. Open items
 
-- Commit, review and release the four branches; set `keycloak.cliClientId` per federation.
+- Merge the `mip` chart branch, release, and set `keycloak.cliClientId` per federation.
 - On handson: re-test the notebook path (open the Notebook page once).
 - After P1: test that a handson token gets 401 on another federation.
 - Test that removing a dataset role takes effect within minutes.
