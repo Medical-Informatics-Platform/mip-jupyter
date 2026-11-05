@@ -145,3 +145,33 @@ to every federation (P1) before switching laptop sign-in on anywhere.
 - On handson: re-test the notebook path (open the Notebook page once).
 - After P1: test that a handson token gets 401 on another federation.
 - Test that removing a dataset role takes effect within minutes.
+
+## 6. OWASP audit, 2026-11-05
+
+Code changes are on branches, not merged or deployed: `platform-backend`
+`fix/owasp-token-session-hardening`, `platform-ui` `fix/security-headers`,
+`mip-jupyter` `fix/hub-require-platform-role`, `mip`
+`feat/network-policy-and-session-values`.
+
+Accepted risk (S5): a laptop sign-in is a bearer refresh token for up to 180 days,
+in a plain file, not bound to the machine, and rotation stays off so
+`MIP_API_TOKEN` keeps working. It is limited by mode 0600, revocation with `mip
+logout` and the Keycloak account console, and the 180-day and 30-day limits. An OS
+keychain is the next step if this proves too weak.
+
+Cannot be closed from code:
+
+- Deploy the new backend to every federation (S1).
+- One platform client per federation, so handson and hbpmip.link stop sharing
+  `mippublic` (S3).
+- Set the Backchannel Logout URL on each platform client.
+- Check real portal, notebook and laptop tokens for `typ=Bearer` and `aud` before
+  deploying and before setting `keycloak.requiredAudience`.
+- Check `subject_id` values against Keycloak before deploying: a stored user whose
+  subject differs gets 403.
+- Confirm that NetworkPolicies keep notebook pods from Exaflow, which has no
+  authentication.
+- Promote the portal's Content-Security-Policy from report-only after checking it in
+  a browser.
+- Get evidence from EBRAINS for password policy, MFA, lockout and recovery, and
+  that clients enforce PKCE S256.
