@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # Pinned by digest so pulls stay reproducible and CHP/Node stay in the base;
 # bump the digest to pick up base fixes.
-FROM jupyterhub/jupyterhub:6.1.1-0@sha256:899132af470907caa38a9296149597fb9f9d0e54a3296b30cbf841c9b5a1dc7d
+FROM jupyterhub/jupyterhub:6.1.1-2@sha256:608dcd8f41ba1551f80f634c55c91c65737a59ccfa446b8cf98fd912f97204f8
 
 # Base tag lags on OS security fixes (e.g. openssl). /srv/venv has its own
 # pip/setuptools/wheel, so the stale Ubuntu copies can go.
@@ -18,12 +18,14 @@ RUN apt-get update \
 RUN npm --prefix /usr/local/lib update --ignore-scripts --no-audit --no-fund follow-redirects \
     && rm -rf /root/.npm
 
-# oauthlib and Mako are JupyterHub dependencies, pinned past its versions for CVE fixes.
+# oauthlib, msgpack and Mako are JupyterHub dependencies, pinned past its
+# versions for CVE fixes.
 RUN pip install --no-cache-dir --disable-pip-version-check \
         jupyterhub-kubespawner==7.1.0 \
         jupyterhub-idle-culler==2.0.0 \
         oauthenticator==17.4.0 \
-        oauthlib==4.0.0 \
+        oauthlib==4.0.1 \
+        msgpack==1.2.3 \
         Mako==1.4.3
 
 COPY docker/hub/jupyterhub_config.py \
