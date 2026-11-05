@@ -157,9 +157,11 @@ Code changes are on branches, not merged or deployed: `platform-backend`
 Tested against a local Keycloak 26 container, not the EBRAINS realm: portal and
 laptop access tokens carry `typ=Bearer`; ID and refresh tokens and another client's
 tokens get 401; back-channel logout ends a portal session when Keycloak ends that
-session. Sending a user logout to a user with many open sessions produced one
-back-channel call, so not every portal session ended; the 8-hour maximum still
-applies. Default portal access tokens carried no `aud`, so `keycloak.requiredAudience`
+session. Keycloak's user logout names one session, so any back-channel logout now
+ends all of that user's portal sessions; tested with 9 sessions. Disabling a user
+alone sends no logout, so administrators must also use *Sign out*; otherwise the
+8-hour maximum applies. The hub's role check was tested with a real JupyterHub: a
+user with a role signs in, one without gets 403. Default portal access tokens carried no `aud`, so `keycloak.requiredAudience`
 needs an audience mapper on the platform client first.
 
 Accepted risk (S5): a laptop sign-in is a bearer refresh token for up to 180 days,
