@@ -49,23 +49,6 @@ jobs:
       - run: uv run python verify_script.py
       - run: uv build
 
-  operator:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: operator
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: operator/go.mod
-          cache-dependency-path: operator/go.sum
-      # Regenerates CRDs/RBAC/deepcopy first; a diff means they were not committed.
-      - name: Generated files are up to date
-        run: make manifests generate && git diff --exit-code
-      - name: Controller tests (envtest)
-        run: make test
-
   docker:
     runs-on: ubuntu-latest
     steps:
@@ -92,14 +75,6 @@ jobs:
           load: true
           cache-from: type=gha,scope=hub
           cache-to: type=gha,scope=hub,mode=max
-      - name: Build notebook operator image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: operator
-          platforms: linux/amd64
-          tags: mip-notebook-operator:ci
-          cache-from: type=gha,scope=operator
-          cache-to: type=gha,scope=operator,mode=max
       - name: Hub tests
         run: >-
           docker run --rm -w /etc/jupyterhub

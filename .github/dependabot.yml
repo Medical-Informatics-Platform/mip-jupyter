@@ -2,7 +2,7 @@
 version: 2
 updates:
   - package-ecosystem: docker
-    directories: ["/docker/singleuser", "/docker/hub", "/operator"]
+    directories: ["/docker/singleuser", "/docker/hub"]
     schedule:
       interval: weekly
     cooldown:

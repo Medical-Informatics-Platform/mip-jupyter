@@ -32,10 +32,6 @@ jobs:
             context: .
             dockerfile: docker/hub/Dockerfile
             cache-scope: hub
-          - image: mip-notebook-operator
-            context: operator
-            dockerfile: operator/Dockerfile
-            cache-scope: operator
 
     steps:
       - name: Check out repository

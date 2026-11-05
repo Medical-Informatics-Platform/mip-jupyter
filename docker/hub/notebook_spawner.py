@@ -1,7 +1,7 @@
 """JupyterHub spawner that asks the MIP notebook operator for servers.
 
 The hub creates a ``Notebook`` custom resource and a token Secret owned by it;
-the operator (``operator/`` in this repository) creates the pod and home PVC
+the operator (``operator/`` in the mip repository) creates the pod and home PVC
 from a ``NotebookProfile`` the hub cannot edit. The hub therefore needs no
 permission on pods or PVCs. See docs/notebook-operator.md.
 """

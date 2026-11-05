@@ -6,8 +6,8 @@ Following the OWASP DevSecOps model, scanning is split into three independent pi
 
 | Pipeline | Workflow | Scans | Tools |
 |---|---|---|---|
-| **Container Scanning** | `container-scan.yml` | Each built image (`mip-jupyter`, `mip-jupyterhub`, `mip-notebook-operator`) + its Dockerfile | Trivy, OSV-Scanner (image CVEs) . Hadolint, OpenGrep (Dockerfile SAST) |
-| **SCA** (Software Composition Analysis) | `sca.yml` | Committed lockfiles (`uv.lock`, `operator/go.mod`) | Trivy, OSV-Scanner |
+| **Container Scanning** | `container-scan.yml` | Each built image (`mip-jupyter`, `mip-jupyterhub`) + its Dockerfile | Trivy, OSV-Scanner (image CVEs) . Hadolint, OpenGrep (Dockerfile SAST) |
+| **SCA** (Software Composition Analysis) | `sca.yml` | Committed lockfiles (`uv.lock`) | Trivy, OSV-Scanner |
 | **SAST** (Static Application Security Testing) | `sast.yml` | Application source code | OpenGrep |
 
 ## Table of Contents
@@ -117,7 +117,7 @@ python ci/container_scan.py --scan-type sca --image mip-jupyterhub:local
 
 ## 5. Pipeline: Software Composition Analysis (SCA)
 
-`sca.yml` scans **application dependencies**, not the container. `sca_scan.py` runs **Trivy** (`trivy fs`) and **OSV-Scanner** (`scan source --recursive`) over `SCA_TARGET` (default `.`), which picks up `uv.lock` and `operator/go.mod`.
+`sca.yml` scans **application dependencies**, not the container. `sca_scan.py` runs **Trivy** (`trivy fs`) and **OSV-Scanner** (`scan source --recursive`) over `SCA_TARGET` (default `.`), which picks up `uv.lock`.
 
 Both tools need to be installed first, same as Container Scanning, via `setup-tools.sh --install-tool trivy,osv-scanner`.
 
