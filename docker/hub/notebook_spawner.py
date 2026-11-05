@@ -10,27 +10,18 @@ from __future__ import annotations
 
 import asyncio
 import os
-import re
 
 from jupyterhub.spawner import Spawner
 from kubernetes_asyncio import client, config
 from kubernetes_asyncio.client.rest import ApiException
-from kubespawner.slugs import multi_slug, safe_slug
+
+from notebook_names import notebook_env, notebook_name
 
 GROUP = "notebooks.mip.ebrains.eu"
 VERSION = "v1alpha1"
 PLURAL = "notebooks"
-TOKEN_ENV = ("JUPYTERHUB_API_TOKEN", "JPY_API_TOKEN")
-# Must match the CRD validation rule on Notebook.spec.env.
-ALLOWED_ENV = re.compile(r"^(JUPYTERHUB|JPY)_[A-Z0-9_]+$")
 POLL_INTERVAL = 1.0
 NAMESPACE = os.environ.get("POD_NAMESPACE", "default")
-SLUG_MAX = 48
-
-
-def notebook_env(env: dict[str, str]) -> dict[str, str]:
-    """Keep only what a Notebook may carry; the token goes through the Secret."""
-    return {k: v for k, v in env.items() if ALLOWED_ENV.match(k) and k not in TOKEN_ENV}
 
 
 class NotebookSpawner(Spawner):
@@ -43,14 +34,7 @@ class NotebookSpawner(Spawner):
 
     @property
     def notebook_name(self) -> str:
-        # KubeSpawner's pod name, jupyter-{user_server} ("safe" slugs): a name
-        # kept as-is never contains "--", so it cannot equal an escaped one
-        # ending in "---<hash>". At most 56 chars; the CRD allows 57.
-        user = safe_slug(self.user.name, max_length=SLUG_MAX)
-        server = safe_slug(self.name, max_length=SLUG_MAX) if self.name else ""
-        if len(user) + len(server) + 2 > SLUG_MAX:
-            return "jupyter-" + multi_slug([self.user.name, self.name or ""], max_length=SLUG_MAX)
-        return "jupyter-" + (f"{user}--{server}" if server else user)
+        return notebook_name(self.user.name, self.name)
 
     async def _apis(self) -> tuple[client.CustomObjectsApi, client.CoreV1Api]:
         if NotebookSpawner._api_client is None:
@@ -70,7 +54,7 @@ class NotebookSpawner(Spawner):
                 return None
             raise
 
-    async def _delete_and_wait(self, timeout: float) -> None:
+    async def _delete(self) -> None:
         custom, _ = await self._apis()
         try:
             await custom.delete_namespaced_custom_object(
@@ -80,6 +64,9 @@ class NotebookSpawner(Spawner):
         except ApiException as e:
             if e.status != 404:
                 raise
+
+    async def _delete_and_wait(self, timeout: float) -> None:
+        await self._delete()
         loop = asyncio.get_running_loop()
         deadline = loop.time() + timeout
         while await self._get() is not None:
@@ -158,7 +145,20 @@ class NotebookSpawner(Spawner):
 
     async def poll(self):
         nb = await self._get()
-        return None if nb and (nb.get("status") or {}).get("phase") != "Failed" else 1
+        if nb is None:
+            return 1
+        if (nb.get("status") or {}).get("phase") != "Failed":
+            return None
+        # Stopped by itself (File > Shut Down, a crash). JupyterHub calls stop() only for servers
+        # poll() reports running, so the Notebook, its pod and its token Secret would stay until the
+        # next start: delete it now, as KubeSpawner's delete_stopped_pods does. Not waited for;
+        # start() waits for leftovers.
+        if not (nb.get("metadata") or {}).get("deletionTimestamp"):
+            try:
+                await self._delete()
+            except ApiException as e:
+                self.log.warning("delete of stopped Notebook %s failed: %s", self.notebook_name, e.status)
+        return 1
 
     async def stop(self, now=False):
         await self._delete_and_wait(60)

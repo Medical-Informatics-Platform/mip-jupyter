@@ -27,6 +27,8 @@ RUN pip install --no-cache-dir --disable-pip-version-check \
         Mako==1.4.3
 
 COPY docker/hub/jupyterhub_config.py \
+     docker/hub/notebook_api_spawner.py \
+     docker/hub/notebook_names.py \
      docker/hub/notebook_spawner.py \
      docker/hub/platform_token_service.py \
      docker/hub/platform_token_utils.py \
