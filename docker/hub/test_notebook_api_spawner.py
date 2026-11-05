@@ -25,7 +25,7 @@ def _response(code, body=None, headers=None):
 
 
 def _write(path, text):
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         f.write(text)
 
 
@@ -52,6 +52,8 @@ class ImportTests(unittest.TestCase):
             "print(bad); sys.exit(1 if bad else 0)"
         )
         here = os.path.dirname(os.path.abspath(__file__))
+        # A fresh interpreter: the other hub tests load kubernetes_asyncio into this one. Fixed argv.
+        # nosemgrep: semgrep-rules.python.lang.security.audit.dangerous-subprocess-use-audit
         result = subprocess.run([sys.executable, "-c", code], cwd=here, capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 

@@ -36,7 +36,7 @@ MAX_BACKOFF = 30.0
 
 def _read_token() -> str:
     # A small file on a tmpfs volume: reading it does not block the loop.
-    with open(TOKEN_FILE) as f:
+    with open(TOKEN_FILE, encoding="utf-8") as f:
         return f.read().strip()
 
 
