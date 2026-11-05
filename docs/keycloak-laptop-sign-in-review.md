@@ -151,7 +151,16 @@ to every federation (P1) before switching laptop sign-in on anywhere.
 Code changes are on branches, not merged or deployed: `platform-backend`
 `fix/owasp-token-session-hardening`, `platform-ui` `fix/security-headers`,
 `mip-jupyter` `fix/hub-require-platform-role`, `mip`
-`feat/network-policy-and-session-values`.
+`feat/network-policy-and-session-values`, `exaflow` `feat/controller-api-token`
+(built on `fix/controller-modernization-wave3`).
+
+Tested against a local Keycloak 26 container, not the EBRAINS realm: portal and
+laptop access tokens carry `typ=Bearer`; ID and refresh tokens and another client's
+tokens get 401; back-channel logout ends a portal session when Keycloak ends that
+session. Sending a user logout to a user with many open sessions produced one
+back-channel call, so not every portal session ended; the 8-hour maximum still
+applies. Default portal access tokens carried no `aud`, so `keycloak.requiredAudience`
+needs an audience mapper on the platform client first.
 
 Accepted risk (S5): a laptop sign-in is a bearer refresh token for up to 180 days,
 in a plain file, not bound to the machine, and rotation stays off so
@@ -165,13 +174,11 @@ Cannot be closed from code:
 - One platform client per federation, so handson and hbpmip.link stop sharing
   `mippublic` (S3).
 - Set the Backchannel Logout URL on each platform client.
-- Check real portal, notebook and laptop tokens for `typ=Bearer` and `aud` before
-  deploying and before setting `keycloak.requiredAudience`.
+- Check tokens from the EBRAINS realm for `typ=Bearer` before deploying, and for
+  `aud` before setting `keycloak.requiredAudience`.
 - Check `subject_id` values against Keycloak before deploying: a stored user whose
   subject differs gets 403.
-- Confirm that NetworkPolicies keep notebook pods from Exaflow, which has no
-  authentication.
-- Promote the portal's Content-Security-Policy from report-only after checking it in
-  a browser.
+- Create the secret `exaflow-api-token`, and confirm from a notebook that
+  NetworkPolicies block Exaflow.
 - Get evidence from EBRAINS for password policy, MFA, lockout and recovery, and
   that clients enforce PKCE S256.
