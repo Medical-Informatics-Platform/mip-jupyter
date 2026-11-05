@@ -156,6 +156,12 @@ class HubAuthConfigTests(unittest.TestCase):
         config = self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1", JUPYTERHUB_CLEANUP_SERVERS="false")
         self.assertFalse(config.JupyterHub.cleanup_servers)
 
+    def test_spawner_mode_must_be_known(self):
+        config = self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1")
+        self.assertEqual(config.JupyterHub.spawner_class, "kubespawner.KubeSpawner")
+        with self.assertRaises(ValueError):
+            self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1", JUPYTERHUB_SPAWNER="operater")
+
     def test_idle_culler_runs_only_when_a_timeout_is_set(self):
         config = self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1")
         self.assertNotIn("services", config.JupyterHub)
