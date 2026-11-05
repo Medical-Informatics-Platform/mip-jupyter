@@ -34,7 +34,7 @@ jobs:
           # renovate: datasource=python-version depName=python
           python-version: '3.15.1'
 
-      # Scans the committed lockfiles directly (uv.lock, operator/go.mod); no SBOM step.
+      # Scans the committed lockfiles directly (uv.lock); no SBOM step.
       - name: Setup tools
         run: bash ci/setup-tools.sh --install-tool trivy,osv-scanner
 
