@@ -69,8 +69,8 @@ Done (uncommitted):
 - `GET /services/auth-config`, public: returns issuer and `KEYCLOAK_CLI_CLIENT_ID`,
   404 when unset (`AuthConfigAPI`, `PUBLIC_PATHS`, `application.yml`, tests,
   decision log, README).
-- Branch commits already accept only tokens whose `azp` or `aud` is the platform
-  client and read roles only from that client.
+- Accept only tokens whose `azp` is the platform client or the laptop client
+  (`aud` is ignored), and read roles only from `authorities` and the platform client.
 
 To do: nothing required. Optional: log `azp` on Bearer requests to tell laptop
 traffic apart.
@@ -180,9 +180,10 @@ uncommitted work.
 
 ## Progress
 
-Built (uncommitted): sections 2, 3, 4 and 5, with tests and docs. Left: the
-deployment chart (section 6, `mip` repo), the Keycloak client, and the
-end-to-end test.
+On 2026-11-05: sections 2, 3, 4 and 5 are on `master` of their repositories; the
+"uncommitted" and "to do" notes above date from the plan. The deployment chart
+(section 6) is on `mip` branch `combined/keycloak-cli-and-jupyterhub-spawner`, not
+yet on `master`. Rollout state: `keycloak-laptop-sign-in-review.md`.
 
 ## Effort remaining (as planned)
 
