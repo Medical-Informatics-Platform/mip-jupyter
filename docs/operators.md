@@ -82,7 +82,7 @@ Full checklist: [`release-process.md`](release-process.md).
 
 - **Compose / Kubernetes / Helm** — `mip/deployment`
 - **Image tags in Hub** — update `JUPYTER_SINGLEUSER_IMAGE` in deployment values or `docker/hub/jupyterhub_config.py`
-- **Keycloak / auth** — `mip/deployment` (Hub refuses to start without `KEYCLOAK_CLIENT_ID`; `JUPYTERHUB_USE_DUMMY_AUTH=1` enables dummy auth for local testing only). Hub login requires a role on this federation's platform client; users without one get a 403
+- **Keycloak / auth** — `mip/deployment` (Hub refuses to start without `KEYCLOAK_CLIENT_ID`; `JUPYTERHUB_USE_DUMMY_AUTH=1` enables dummy auth for local testing only). Hub login requires a role on this federation's platform client; users without one get a 403, and a revoked role ends the session once the access token expires
 - **Platform token refresh** — Hub `platform_token_service.py`; validate in deployment integration tests
 - **Laptop sign-in** — tokens from the portal's account page and `mip login` use a public Keycloak client named by the backend's `KEYCLOAK_CLI_CLIENT_ID` (redirect URI `<portal>/account`, web origin `<portal>`, device grant on), not JupyterHub; its Keycloak session limits set how long a laptop stays signed in. Hub `/api/platform-token` answers only users' own servers
 - **Shared examples** — `EXAMPLES_CLAIM` on the notebook operator; bound-volume rule and rollback in [`notebook-operator.md`](notebook-operator.md)

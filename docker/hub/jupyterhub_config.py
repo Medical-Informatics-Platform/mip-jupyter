@@ -84,6 +84,14 @@ if _use_keycloak:
         async def check_allowed(self, username, auth_model):
             return _auth_model_has_role(auth_model)
 
+        async def refresh_user(self, user, handler=None, **kwargs):
+            # JupyterHub checks check_allowed at login only, so existing sessions are re-checked here.
+            refreshed = await super().refresh_user(user, handler, **kwargs)
+            if isinstance(refreshed, dict) and not _auth_model_has_role(refreshed):
+                self.log.warning("User %s no longer holds a platform role; signing out", user.name)
+                return False
+            return refreshed
+
     c.JupyterHub.authenticator_class = PlatformRoleAuthenticator
     c.GenericOAuthenticator.client_id = _keycloak_client_id
     c.GenericOAuthenticator.client_secret = _env("KEYCLOAK_CLIENT_SECRET")
