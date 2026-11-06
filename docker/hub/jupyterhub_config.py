@@ -46,12 +46,15 @@ c.JupyterHub.tornado_settings = {
     "xsrf_cookie_kwargs": {"path": f"{_notebook_base}/"},
 }
 
-# Session cookie behind platform-ui nginx / HTTPS reverse proxy.
-_cookie_secure = _env_bool("JUPYTERHUB_COOKIE_SECURE", True)
-c.JupyterHub.cookie_options = {
+# Session cookie behind platform-ui nginx / HTTPS reverse proxy. JupyterHub reads these
+# from tornado_settings; it ignores c.JupyterHub.cookie_options.
+_cookie_options = {
     "SameSite": "Lax",
-    "Secure": _cookie_secure,
+    "Secure": _env_bool("JUPYTERHUB_COOKIE_SECURE", True),
 }
+c.JupyterHub.tornado_settings["cookie_options"] = _cookie_options
+# JupyterHub copies cookie_options to _xsrf only when xsrf_cookie_kwargs is empty.
+c.JupyterHub.tornado_settings["xsrf_cookie_kwargs"].update(_cookie_options)
 
 _keycloak_client_id = _env("KEYCLOAK_CLIENT_ID")
 _use_dummy_auth = _env_bool("JUPYTERHUB_USE_DUMMY_AUTH", False)
