@@ -1,4 +1,4 @@
-"""Pure helpers for platform token expiry and refresh."""
+"""Pure helpers for platform token expiry, refresh and roles."""
 
 from __future__ import annotations
 
@@ -54,6 +54,20 @@ def decode_jwt_payload(token: str) -> dict[str, Any]:
     except (ValueError, json.JSONDecodeError):
         return {}
     return payload if isinstance(payload, dict) else {}
+
+
+def has_platform_role(access_token: str | None, client_id: str) -> bool:
+    """True when the token carries a role of this federation's client.
+
+    Reads the backend's two role sources, but not its fallback to the scope claim: MIP roles do
+    not ride on scopes. The token comes straight from Keycloak over TLS, so it is not verified
+    again here.
+    """
+    claims = decode_jwt_payload(access_token or "")
+    resource_access = claims.get("resource_access")
+    client = resource_access.get(client_id) if isinstance(resource_access, dict) else None
+    roles = client.get("roles") if isinstance(client, dict) else None
+    return bool(claims.get("authorities") or roles)
 
 
 def decode_jwt_exp(token: str) -> float | None:
