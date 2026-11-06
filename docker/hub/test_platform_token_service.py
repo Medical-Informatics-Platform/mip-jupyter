@@ -150,6 +150,18 @@ class HubAuthConfigTests(unittest.TestCase):
         config = self._load_config(KEYCLOAK_CLIENT_ID="mip")
         self.assertTrue(issubclass(config.JupyterHub.authenticator_class, GenericOAuthenticator))
 
+    def test_session_cookie_options_reach_jupyterhub(self):
+        settings = self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1").JupyterHub.tornado_settings
+        self.assertEqual(settings["cookie_options"], {"SameSite": "Lax", "Secure": True})
+        self.assertEqual(settings["xsrf_cookie_kwargs"]["Secure"], True)
+        self.assertEqual(settings["xsrf_cookie_kwargs"]["SameSite"], "Lax")
+
+    def test_secure_cookies_can_be_turned_off_for_plain_http(self):
+        settings = self._load_config(
+            JUPYTERHUB_USE_DUMMY_AUTH="1", JUPYTERHUB_COOKIE_SECURE="false"
+        ).JupyterHub.tornado_settings
+        self.assertEqual(settings["cookie_options"], {"SameSite": "Lax", "Secure": False})
+
     def test_keycloak_login_needs_a_platform_role(self):
         authenticator = self._load_config(KEYCLOAK_CLIENT_ID="mip").JupyterHub.authenticator_class()
         payload = base64.urlsafe_b64encode(
