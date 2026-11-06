@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 from jupyterhub import orm, roles, scopes
 from jupyterhub.app import JupyterHub
 from jupyterhub.utils import hash_token
+from oauthenticator.generic import GenericOAuthenticator
 from tornado import web
 from traitlets.config.loader import PyFileConfigLoader
 
@@ -147,9 +148,20 @@ class HubAuthConfigTests(unittest.TestCase):
 
     def test_keycloak_client_id_selects_oauth(self):
         config = self._load_config(KEYCLOAK_CLIENT_ID="mip")
-        self.assertEqual(
-            config.JupyterHub.authenticator_class, "oauthenticator.generic.GenericOAuthenticator"
-        )
+        self.assertTrue(issubclass(config.JupyterHub.authenticator_class, GenericOAuthenticator))
+
+    def test_keycloak_login_needs_a_platform_role(self):
+        authenticator = self._load_config(KEYCLOAK_CLIENT_ID="mip").JupyterHub.authenticator_class()
+        payload = base64.urlsafe_b64encode(
+            json.dumps({"authorities": ["research_dataset_ds1"]}).encode()
+        ).decode().rstrip("=")
+        with_role = {"auth_state": {"access_token": f"h.{payload}.s"}}
+        without_role = {"auth_state": {"access_token": "h.e30.s"}}
+
+        self.assertFalse(authenticator.allow_all)
+        self.assertTrue(asyncio.run(authenticator.check_allowed("alice", with_role)))
+        self.assertFalse(asyncio.run(authenticator.check_allowed("alice", without_role)))
+        self.assertFalse(asyncio.run(authenticator.check_allowed("alice", None)))
 
     def test_servers_are_stopped_on_hub_restart_unless_disabled(self):
         self.assertTrue(self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1").JupyterHub.cleanup_servers)

@@ -2,7 +2,7 @@ import os
 import sys
 
 from platform_token_service import PlatformTokenHandler, fresh_access_token
-from platform_token_utils import normalize_cpu, normalize_memory
+from platform_token_utils import has_platform_role, normalize_cpu, normalize_memory
 
 
 def _env(name, default=""):
@@ -68,11 +68,23 @@ if _crypt_key:
     c.CryptKeeper.keys = [_crypt_key]
 
 if _use_keycloak:
+    from oauthenticator.generic import GenericOAuthenticator
+
     _auth_url = _env("KEYCLOAK_AUTH_URL", "https://iam.ebrains.eu/auth/").rstrip("/")
     _realm = _env("KEYCLOAK_REALM", "MIP")
     _realm_base = f"{_auth_url}/realms/{_realm}"
 
-    c.JupyterHub.authenticator_class = "oauthenticator.generic.GenericOAuthenticator"
+    def _auth_model_has_role(auth_model):
+        access_token = ((auth_model or {}).get("auth_state") or {}).get("access_token")
+        return has_platform_role(access_token, _keycloak_client_id)
+
+    class PlatformRoleAuthenticator(GenericOAuthenticator):
+        """Deny by default: the realm spans every federation, so signing in is not enough."""
+
+        async def check_allowed(self, username, auth_model):
+            return _auth_model_has_role(auth_model)
+
+    c.JupyterHub.authenticator_class = PlatformRoleAuthenticator
     c.GenericOAuthenticator.client_id = _keycloak_client_id
     c.GenericOAuthenticator.client_secret = _env("KEYCLOAK_CLIENT_SECRET")
     c.GenericOAuthenticator.authorize_url = f"{_realm_base}/protocol/openid-connect/auth"
@@ -80,7 +92,9 @@ if _use_keycloak:
     c.GenericOAuthenticator.userdata_url = f"{_realm_base}/protocol/openid-connect/userinfo"
     c.GenericOAuthenticator.username_claim = "preferred_username"
     c.GenericOAuthenticator.scope = ["openid", "profile", "email", "offline_access"]
-    c.GenericOAuthenticator.allow_all = True
+    c.GenericOAuthenticator.custom_403_message = (
+        "Your account has no role on this MIP platform. Ask your federation administrator for access."
+    )
     c.GenericOAuthenticator.manage_groups = False
     c.GenericOAuthenticator.auto_login = _env_bool("JUPYTERHUB_AUTO_LOGIN", True)
     if _env_bool("JUPYTERHUB_OAUTH_PROMPT_NONE", False):
