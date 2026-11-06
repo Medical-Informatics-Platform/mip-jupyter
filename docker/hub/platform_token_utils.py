@@ -43,16 +43,21 @@ def keycloak_realm_base() -> str:
     return f"{auth_url}/realms/{realm}"
 
 
-def decode_jwt_exp(token: str) -> float | None:
+def decode_jwt_payload(token: str) -> dict[str, Any]:
     parts = token.split(".")
     if len(parts) != 3:
-        return None
+        return {}
     payload_b64 = parts[1] + "=" * (-len(parts[1]) % 4)
     try:
         decoded = base64.urlsafe_b64decode(payload_b64.encode("utf-8"))
         payload = json.loads(decoded.decode("utf-8"))
     except (ValueError, json.JSONDecodeError):
-        return None
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def decode_jwt_exp(token: str) -> float | None:
+    payload = decode_jwt_payload(token)
     exp = payload.get("exp")
     return float(exp) if isinstance(exp, (int, float)) else None
 
