@@ -1,6 +1,6 @@
 # Laptop sign-in with Keycloak: decisions, rollout and security review
 
-Status on 2026-10-23. Companion documents: `keycloak-laptop-sign-in.md` (how it
+Status on 2026-10-23; code state updated 2026-11-05. Companion documents: `keycloak-laptop-sign-in.md` (how it
 works) and `keycloak-laptop-sign-in-plan.md` (the change list).
 
 ## 1. Decisions
@@ -57,8 +57,9 @@ Rejected:
   process, `mip logout` and revocation. Laptop token claims: `azp=mip-cli-handson`,
   `aud=mippublic`, `authorities` = the three `mippublic` roles, no
   `resource_access` or `realm_access`.
-- **Code**: uncommitted on `mip-jupyter` `feat/remote-access`, `platform-backend`
-  and `platform-ui` `feat/remote-api-token`, `mip` `feat/keycloak-cli-client`.
+- **Code**: on `master` of `mip-jupyter`, `platform-backend` and `platform-ui`. The
+  chart change is on `mip` `combined/keycloak-cli-and-jupyterhub-spawner`, not yet
+  on `master`.
 - **Other federations**: backend `10.2.0`, hub `0.2.1`, no laptop client.
 
 ## 3. Rolling out to every federation
@@ -140,7 +141,46 @@ to every federation (P1) before switching laptop sign-in on anywhere.
 
 ## 5. Open items
 
-- Commit, review and release the four branches; set `keycloak.cliClientId` per federation.
+- Merge the `mip` chart branch, release, and set `keycloak.cliClientId` per federation.
 - On handson: re-test the notebook path (open the Notebook page once).
 - After P1: test that a handson token gets 401 on another federation.
 - Test that removing a dataset role takes effect within minutes.
+
+## 6. OWASP audit, 2026-11-05
+
+Code changes are on branches, not merged or deployed: `platform-backend`
+`fix/owasp-token-session-hardening`, `platform-ui` `fix/security-headers`,
+`mip-jupyter` `fix/hub-require-platform-role`, `mip`
+`feat/network-policy-and-session-values`, `exaflow`
+`feat/controller-api-token-master`.
+
+Tested against a local Keycloak 26 container, not the EBRAINS realm: portal and
+laptop access tokens carry `typ=Bearer`; ID and refresh tokens and another client's
+tokens get 401; back-channel logout ends a portal session when Keycloak ends that
+session. Keycloak's user logout names one session, so any back-channel logout now
+ends all of that user's portal sessions; tested with 9 sessions. Disabling a user
+alone sends no logout, so administrators must also use *Sign out*; otherwise the
+8-hour maximum applies. The hub's role check was tested with a real JupyterHub: a
+user with a role signs in, one without gets 403. Default portal access tokens carried no `aud`, so `keycloak.requiredAudience`
+needs an audience mapper on the platform client first.
+
+Accepted risk (S5): a laptop sign-in is a bearer refresh token for up to 180 days,
+in a plain file, not bound to the machine, and rotation stays off so
+`MIP_API_TOKEN` keeps working. It is limited by mode 0600, revocation with `mip
+logout` and the Keycloak account console, and the 180-day and 30-day limits. An OS
+keychain is the next step if this proves too weak.
+
+Cannot be closed from code:
+
+- Deploy the new backend to every federation (S1).
+- One platform client per federation, so handson and hbpmip.link stop sharing
+  `mippublic` (S3).
+- Set the Backchannel Logout URL on each platform client.
+- Check tokens from the EBRAINS realm for `typ=Bearer` before deploying, and for
+  `aud` before setting `keycloak.requiredAudience`.
+- Check `subject_id` values against Keycloak before deploying: a stored user whose
+  subject differs gets 403.
+- Create the secret `exaflow-api-token`, and confirm from a notebook that
+  NetworkPolicies block Exaflow.
+- Get evidence from EBRAINS for password policy, MFA, lockout and recovery, and
+  that clients enforce PKCE S256.

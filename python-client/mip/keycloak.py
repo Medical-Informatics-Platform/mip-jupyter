@@ -192,7 +192,7 @@ def login(
     verifier = secrets.token_urlsafe(32)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
     # offline_access: the sign-in outlives the browser session, for as long as the
-    # Keycloak client allows (about 30 days).
+    # Keycloak client allows (at most about 6 months; 30 days without use ends it sooner).
     status, device = _post(
         endpoints["device_authorization_endpoint"],
         {
