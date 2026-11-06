@@ -9,7 +9,7 @@ import os
 import time
 import unittest
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from jupyterhub import orm, roles, scopes
 from jupyterhub.app import JupyterHub
@@ -162,6 +162,24 @@ class HubAuthConfigTests(unittest.TestCase):
         self.assertTrue(asyncio.run(authenticator.check_allowed("alice", with_role)))
         self.assertFalse(asyncio.run(authenticator.check_allowed("alice", without_role)))
         self.assertFalse(asyncio.run(authenticator.check_allowed("alice", None)))
+
+    def test_session_ends_when_the_platform_role_is_gone(self):
+        authenticator = self._load_config(KEYCLOAK_CLIENT_ID="mip").JupyterHub.authenticator_class()
+        payload = base64.urlsafe_b64encode(
+            json.dumps({"authorities": ["research_dataset_ds1"]}).encode()
+        ).decode().rstrip("=")
+        with_role = {"auth_state": {"access_token": f"h.{payload}.s"}}
+        without_role = {"auth_state": {"access_token": "h.e30.s"}}
+        user = SimpleNamespace(name="alice")
+
+        def refresh(result):
+            with patch.object(GenericOAuthenticator, "refresh_user", AsyncMock(return_value=result)):
+                return asyncio.run(authenticator.refresh_user(user))
+
+        self.assertEqual(refresh(with_role), with_role)
+        self.assertIs(refresh(without_role), False)
+        self.assertIs(refresh(False), False)
+        self.assertIs(refresh(True), True)
 
     def test_servers_are_stopped_on_hub_restart_unless_disabled(self):
         self.assertTrue(self._load_config(JUPYTERHUB_USE_DUMMY_AUTH="1").JupyterHub.cleanup_servers)
