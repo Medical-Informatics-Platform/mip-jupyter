@@ -203,6 +203,11 @@ missing = MissingValuesHandler(
     strategies={age: "median", mmse: "mean"},
 )
 
+# "most_frequent" also works for categorical variables: fills with the
+# most frequent value in each dataset (no category list is sent;
+# datasets can get different values)
+MissingValuesHandler(strategies={sex: "most_frequent"})
+
 outliers = OutlierWinsorizer(
     strategies={mmse: "iqr"},
     tails={mmse: "both"},

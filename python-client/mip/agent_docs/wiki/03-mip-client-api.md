@@ -33,6 +33,7 @@ F(diagnosis).isin(["Alzheimer's disease", "CN"])  # labels; codes often "1"/"0" 
 F(mmse).between(20, 26); expr1 | expr2; ~F(x).isin([...])
 
 MissingValuesHandler(strategies={age: "median", mmse: "mean"})
+MissingValuesHandler(strategies={sex: "most_frequent"})  # categorical variables: fills with the most frequent value in each dataset; datasets can get different values
 OutlierWinsorizer(strategies={mmse: "iqr"}, tails={mmse: "both"}, folds={mmse: 1.5})
 CategoricalColumnCreator(label="Cognitive profile", rules={...}, default_enumeration="Other")
 ```
