@@ -115,7 +115,7 @@ See [`docs/release-process.md`](docs/release-process.md) for release checks.
 |----------|---------|
 | `PLATFORM_BACKEND_URL` or `MIP_BASE_URL` | Platform backend base URL under `/services` |
 | `PLATFORM_TOKEN` or `MIP_TOKEN` | Bearer token |
-| `MIP_URL`, `MIP_API_TOKEN` | From your own computer: portal URL, and a token from the portal's account page (or sign in once with `mip login`) ([guide](docs/user/remote-access.md)) |
+| `MIP_URL`, `MIP_API_TOKEN` | From your own computer: portal URL; sign in once with `mip login`. `MIP_API_TOKEN` is a last resort for programs that cannot run `mip login --token`; never in `.env` files, notebooks or repositories ([guide](docs/user/remote-access.md)) |
 | `PLATFORM_BACKEND_TIMEOUT` | Request timeout in seconds; default is `30` |
 | `PLATFORM_BACKEND_ALLOW_REDIRECTS` | Set to `1` to follow redirects |
 

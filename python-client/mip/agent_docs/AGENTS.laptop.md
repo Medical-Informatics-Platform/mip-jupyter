@@ -7,8 +7,10 @@ aggregate computed there.
 ## Before writing analysis code
 
 1. `mip env-status` — must say `"ready": true`. If not, ask the user to sign in
-   themselves with `mip login https://<portal>` or a token from the portal's account page
-   (see `mip guide 05-env-and-backend`).
+   themselves with `mip login https://<portal>` or `mip login --token` (a token from the
+   portal's account page; see `mip guide 05-env-and-backend`). `MIP_API_TOKEN` is only
+   for programs that cannot run `mip login --token`; never put it in `.env` files,
+   notebooks or repositories.
 2. `mip guide` — lists guide pages. Read the one that fits the task, narrowed with `--topic`:
 
 | Task | Page |

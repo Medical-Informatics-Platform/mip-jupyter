@@ -31,10 +31,14 @@ uv sync --extra dev --extra notebook
 `mip.Client.from_env()` reads `PLATFORM_BACKEND_URL` (for example
 `https://<host>/services`) and `MIP_TOKEN`.
 
-From your own computer, either paste a token from the portal's account page into
-`mip login --token https://<host>` (or set `MIP_URL` and `MIP_API_TOKEN`), or run
-`mip login https://<host>` to sign in in your browser (Keycloak device flow). The portal is
-remembered, so `Client.from_env()` needs no settings afterwards. The client renews access by itself;
+From your own computer, run `mip login https://<host>` to sign in in your browser
+(Keycloak device flow), or `mip login --token https://<host>` with a token from the
+portal's account page. `MIP_API_TOKEN` (with `MIP_URL`) is a last resort for programs
+that cannot run `mip login --token`; it is imported into the saved sign-in on first
+use (a `mip login` sign-in is never replaced), and must never go into `.env` files,
+notebooks or repositories. The portal is
+remembered, so `Client.from_env()` needs no settings afterwards. The client renews
+access by itself;
 `mip logout` signs out. See
 [Use MIP from your own computer](https://github.com/Medical-Informatics-Platform/mip-jupyter/blob/master/docs/user/remote-access.md).
 
