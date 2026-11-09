@@ -1,7 +1,7 @@
 # Laptop sign-in with Keycloak: decisions, rollout and security review
 
-Status on 2026-10-23; code state updated 2026-11-05. Companion documents: `keycloak-laptop-sign-in.md` (how it
-works) and `keycloak-laptop-sign-in-plan.md` (the change list).
+Status on 2026-10-23; code state updated 2026-11-05. Companion document:
+`keycloak-laptop-sign-in.md` (how it works).
 
 ## 1. Decisions
 
