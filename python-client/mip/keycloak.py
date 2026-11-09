@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import secrets
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -33,6 +34,10 @@ from .exceptions import MipBackendError, MipConfigurationError, MipError
 CREDENTIALS_FILE = Path.home() / ".config" / "mip" / "credentials.json"
 TIMEOUT = 15.0
 DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"
+
+# The fixed MIP_API_TOKEN warning goes to stderr once per process, not per Client.
+_env_token_warned = False
+_read_only_warned = False
 
 
 def require_https(url: str) -> None:
@@ -225,7 +230,8 @@ def login(
     show(
         f"To sign in to {mip_url}, open this link in a browser:\n\n    {link}\n\n"
         f"Check that the page shows the code {device['user_code']}, then approve.\n"
-        "Never approve a code that someone else sent you."
+        "Never approve a code that someone else sent you. Approve only if you ran "
+        "`mip login` yourself in the last few minutes."
     )
 
     interval = float(device.get("interval") or 5)
@@ -315,20 +321,103 @@ def access_token(mip_url: str) -> str:
     return tokens["access_token"]
 
 
-def env_token_refresher(backend_url: str, refresh_token: str) -> Callable[[], str]:
-    """Access tokens from a token given in MIP_API_TOKEN, for programs with nowhere to save one.
+def warn_env_token(*, read_only: bool = False) -> None:
+    """Once per process: MIP_API_TOKEN is a last resort (never in notebooks, .env, repos)."""
 
-    A refresh token that Keycloak rotates is kept in memory only; the variable keeps
-    working as long as the realm does not revoke used refresh tokens (the default).
+    global _env_token_warned, _read_only_warned
+    if not _env_token_warned:
+        _env_token_warned = True
+        print(
+            "MIP_API_TOKEN is set. Prefer `mip login --token`; never put the token in "
+            "notebooks, .env files or repositories.",
+            file=sys.stderr,
+        )
+    if read_only and not _read_only_warned:
+        _read_only_warned = True
+        print(
+            "The token could not be saved on this computer, so it is renewed in memory "
+            "only and stops working across runs once Keycloak rotates refresh tokens.",
+            file=sys.stderr,
+        )
+
+
+def _import_env_token(mip_url: str, backend_url: str, token: str, token_hash: str) -> dict[str, str] | str:
+    """Check and save an MIP_API_TOKEN like `mip login --token`, marked by a SHA-256 of
+    the environment value, so a rotated refresh token is found again on the next run.
+
+    Returns the access token from the import's own renewal, so the first use does
+    not burn a second refresh grant; or the entry to keep in memory when nothing
+    can be saved (read-only home, CI) — with the already renewed refresh token, so
+    rotation does not lose it. A token Keycloak rejects is an error, unless
+    another process imported the same token meanwhile.
     """
 
-    entry: dict[str, str] = {}
+    entry = _entry(_discover(backend_url), token)
+    try:
+        tokens = _renew(entry)
+    except MipBackendError:
+        # Two processes importing the same new token together: the first one already
+        # saved its rotated refresh token, which is as good as a fresh import.
+        with _locked():
+            saved = _load().get(mip_url)
+        if isinstance(saved, dict) and saved.get("env_token_hash") == token_hash:
+            return access_token(mip_url)
+        raise
+    entry["refresh_token"] = tokens.get("refresh_token") or entry["refresh_token"]
+    entry["env_token_hash"] = token_hash
+    try:
+        _replace(mip_url, entry)
+    except OSError:
+        warn_env_token(read_only=True)
+        return entry
+    print(
+        "Your MIP_API_TOKEN was imported into the saved sign-in and is renewed from "
+        "there; you can now remove it from the environment.",
+        file=sys.stderr,
+    )
+    return tokens["access_token"]
+
+
+def env_token_refresher(mip_url: str, backend_url: str, refresh_token: str) -> Callable[[], str]:
+    """Access tokens from a token given in MIP_API_TOKEN: a last resort for programs
+    that cannot run `mip login --token`.
+
+    On first use the token is imported into the saved sign-in for mip_url, marked
+    with a SHA-256 of the environment value; later runs whose MIP_API_TOKEN still
+    hashes to it use the saved, possibly rotated sign-in, so refresh-token rotation
+    keeps working. A `mip login` sign-in for the same portal wins over a leftover
+    MIP_API_TOKEN and is never replaced. Then, and where nothing can be saved
+    (read-only home, CI), the token is renewed in memory only.
+    """
+
+    token = refresh_token.strip()
+    imported = False
+    fallback: dict[str, str] = {}
 
     def refresh() -> str:
-        if not entry:
-            entry.update(_entry(_discover(backend_url), refresh_token.strip()))
-        tokens = _renew(entry)
-        entry["refresh_token"] = tokens.get("refresh_token") or entry["refresh_token"]
+        nonlocal imported
+        if not imported and not fallback:
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+            # Under the credentials lock, so the decision sees a sign-in that
+            # another process just saved.
+            with _locked():
+                saved = _load().get(mip_url)
+            if isinstance(saved, dict) and (
+                "env_token_hash" not in saved or saved["env_token_hash"] == token_hash
+            ):
+                # A `mip login` sign-in wins over the leftover variable, and an
+                # earlier import of this very token is reused; both may have rotated.
+                imported = True
+            else:
+                result = _import_env_token(mip_url, backend_url, token, token_hash)
+                if isinstance(result, str):  # imported; access token from its renewal
+                    imported = True
+                    return result
+                fallback.update(result)      # nothing could be saved: memory only
+        if imported:
+            return access_token(mip_url)
+        tokens = _renew(fallback)
+        fallback["refresh_token"] = tokens.get("refresh_token") or fallback["refresh_token"]
         return tokens["access_token"]
 
     return refresh

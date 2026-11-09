@@ -19,7 +19,7 @@ Notebooks never call Exaflow directly.
 | `PLATFORM_BACKEND_URL` or `MIP_BASE_URL` | Backend base URL, e.g. `http://127.0.0.1:8080/services` |
 | `PLATFORM_TOKEN` or `MIP_TOKEN` | Bearer token for platform-backend |
 | `MIP_URL` | Remote only: portal base `https://<host>`; derives backend `{MIP_URL}/services` unless `PLATFORM_BACKEND_URL` / `MIP_BASE_URL` is set (same host only). Access comes from `MIP_API_TOKEN` or a `mip login` sign-in (Keycloak), never from `MIP_TOKEN`. Defaults to the portal `mip login` signed in to last |
-| `MIP_API_TOKEN` | Remote only: token created on the portal's account page (a Keycloak offline token); renewed in memory; takes precedence over `mip login` |
+| `MIP_API_TOKEN` | Remote only, last resort for programs that cannot run `mip login --token`; never in `.env` files, notebooks or repositories. On first use it is imported into the saved sign-in (marked by a SHA-256 of the value); later runs with the same value renew from the saved sign-in, so refresh-token rotation keeps working. An existing `mip login` sign-in is never replaced — then the env token is renewed in memory only. Where nothing can be saved (read-only home, CI) it is renewed in memory only. Takes precedence over a `mip login` sign-in |
 | `PLATFORM_BACKEND_TIMEOUT` | Request timeout in seconds (default `30`) |
 | `PLATFORM_BACKEND_ALLOW_REDIRECTS` | Set to `1` to follow redirects |
 
@@ -39,9 +39,10 @@ token, including ones users create on `/hub/token`; hub 401 = no stored platform
 
 ## Own computer (remote)
 
-User guide: `docs/user/remote-access.md`. `pip install mip-client`, then either
-create a token on the portal's account page and run `mip login --token https://<host>` (or set
-`MIP_URL` and `MIP_API_TOKEN`), or run `mip login https://<host>` for the device flow in a browser.
+User guide: `docs/user/remote-access.md`. `pip install mip-client`, then run
+`mip login https://<host>` for the device flow in a browser, or `mip login --token https://<host>`
+with a token from the portal's account page. `MIP_API_TOKEN` is a last resort for programs
+that cannot run `mip login --token`; never put it in `.env` files, notebooks or repositories.
 The portal signed in to last is remembered in the credentials file and used when `MIP_URL` is unset
 (never when `PLATFORM_BACKEND_URL`/`MIP_BASE_URL` is set, as in the notebook). Both use the public Keycloak client named by
 `{backend}/auth-config` and keep a refresh token per portal in `~/.config/mip/credentials.json`;

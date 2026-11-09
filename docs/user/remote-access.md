@@ -19,14 +19,16 @@ pip install mip-client
 2. On the machine, run `mip login --token https://<mip-host>` and paste it. It is
    saved in `~/.config/mip/credentials.json`, readable only by you.
 
-In a script you can set `MIP_URL=https://<mip-host>` and `MIP_API_TOKEN` to the
-token instead, but every program started from there, AI assistants included, can
-read environment variables.
+In a script that cannot run `mip login --token` you can set
+`MIP_URL=https://<mip-host>` and `MIP_API_TOKEN` to the token instead — a last
+resort, never in `.env` files or repositories — but every program started from
+there, AI assistants included, can read environment variables.
 
 **On a computer with a browser**, run `mip login https://<mip-host>`. It shows a link and a code.
 Open the link in any browser, even on another device, and sign in. Check that the
 page shows the same code, then approve. Never approve a code that someone else
-sent you: whoever started that sign-in would get your access.
+sent you, and only if you ran `mip login` yourself in the last few minutes:
+whoever started that sign-in would get your access.
 
 Either way, a sign-in lasts at most 6 months, and ends after 30 days without
 use (the portal's operators set the exact limits). Then sign in again: signing

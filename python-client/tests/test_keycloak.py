@@ -1,7 +1,9 @@
 """Sign-in from your own computer: Keycloak device login, refresh, logout, and MIP_URL."""
 
+import contextlib
 import base64
 import hashlib
+import io
 import json
 import os
 import tempfile
@@ -63,6 +65,8 @@ class _CredentialsTestCase(unittest.TestCase):
         patcher = patch("mip.keycloak.CREDENTIALS_FILE", self.file)
         patcher.start()
         self.addCleanup(patcher.stop)
+        keycloak._env_token_warned = False  # the warnings are once per process
+        keycloak._read_only_warned = False
 
     def write(self, data):
         self.file.parent.mkdir(parents=True, exist_ok=True)
@@ -108,6 +112,9 @@ class TestLogin(_CredentialsTestCase):
         self.assertEqual(get_mock.call_args_list[0].args[0], f"{MIP_URL}/services/auth-config")
         self.assertIn(DEVICE["verification_uri_complete"], shown[0])
         self.assertIn("ABCD-EFGH", shown[0])
+        self.assertIn(MIP_URL, shown[0])  # the portal the sign-in is for
+        self.assertIn("Never approve a code that someone else sent you", shown[0])
+        self.assertIn("ran `mip login` yourself", shown[0])
         self.assertEqual(sleeps, [5, 5, 10])
         device_request = post_mock.call_args_list[0]
         self.assertEqual(device_request.args[0], OIDC["device_authorization_endpoint"])
@@ -284,13 +291,14 @@ class TestAccessToken(_CredentialsTestCase):
 @patch("mip.keycloak.requests.post")
 class TestLogout(_CredentialsTestCase):
     def test_logout_revokes_and_forgets_only_this_portal(self, post_mock):
-        self.write({MIP_URL: _entry("r1"), "https://other.example": _entry("other")})
+        self.write({MIP_URL: {**_entry("r1"), "env_token_hash": "x"}, "https://other.example": _entry("other")})
         post_mock.return_value = _resp(200)
 
         self.assertEqual(keycloak.logout(MIP_URL, f"{MIP_URL}/services"), {"ok": True, "revoked": True})
 
         self.assertEqual(post_mock.call_args.args[0], OIDC["revocation_endpoint"])
         self.assertEqual(post_mock.call_args.kwargs["data"]["token"], "r1")
+        # the stored env-token hash goes with the sign-in
         self.assertEqual(self.read(), {"https://other.example": _entry("other")})
 
     def test_logout_forgets_the_remembered_portal(self, post_mock):
@@ -330,21 +338,162 @@ class TestPortalToken(_CredentialsTestCase):
         self.assertNotIn("bad-token", str(ctx.exception))
         self.assertFalse(self.file.exists())
 
-    def test_env_token_renews_in_memory_without_writing_files(self, get_mock, post_mock):
+    def test_env_token_is_imported_once_and_renewed_from_the_saved_sign_in(self, get_mock, post_mock):
         get_mock.side_effect = _get()
         post_mock.side_effect = [
+            _resp(200, {"access_token": "acc1", "refresh_token": "r2"}),  # import check, its access token
+            _resp(200, {"access_token": "acc2", "refresh_token": "r3"}),  # second use
+            _resp(200, {"access_token": "acc3", "refresh_token": "r4"}),  # third use
+        ]
+        refresh = keycloak.env_token_refresher(MIP_URL, f"{MIP_URL}/services", "r1")
+
+        # The import's own renewal serves the first use; no second grant burned.
+        self.assertEqual(refresh(), "acc1")
+
+        saved = self.read()[MIP_URL]
+        self.assertEqual(saved["refresh_token"], "r2")
+        self.assertEqual(saved["env_token_hash"], hashlib.sha256(b"r1").hexdigest())
+
+        # Later uses renew the saved sign-in; no new import.
+        self.assertEqual(refresh(), "acc2")
+        self.assertEqual(refresh(), "acc3")
+        self.assertEqual(self.read()[MIP_URL]["refresh_token"], "r4")
+        sent = [call.kwargs["data"]["refresh_token"] for call in post_mock.call_args_list]
+        self.assertEqual(sent, ["r1", "r2", "r3"])
+        self.assertNotIn("env_token_hash", json.dumps([call.kwargs.get("data") for call in post_mock.call_args_list]))
+
+    def test_rotated_env_token_is_found_again_on_the_next_run(self, get_mock, post_mock):
+        self.write({MIP_URL: {**_entry("r2"), "env_token_hash": hashlib.sha256(b"r1").hexdigest()}})
+        post_mock.return_value = _resp(200, {"access_token": "acc", "refresh_token": "r3"})
+
+        refresh = keycloak.env_token_refresher(MIP_URL, f"{MIP_URL}/services", "r1")
+
+        self.assertEqual(refresh(), "acc")
+        get_mock.assert_not_called()  # saved endpoints, no discovery
+        self.assertEqual(post_mock.call_args.kwargs["data"]["refresh_token"], "r2")
+        self.assertEqual(self.read()[MIP_URL]["refresh_token"], "r3")
+
+    def test_a_new_env_value_imports_instead_of_the_old_sign_in(self, get_mock, post_mock):
+        self.write({MIP_URL: {**_entry("r2"), "env_token_hash": hashlib.sha256(b"r1").hexdigest()}})
+        get_mock.side_effect = _get()
+        post_mock.side_effect = [
+            _resp(200, {"access_token": "acc1", "refresh_token": "r9"}),
+            _resp(200, {"access_token": "acc2", "refresh_token": "r10"}),
+        ]
+
+        refresh = keycloak.env_token_refresher(MIP_URL, f"{MIP_URL}/services", "r8")
+
+        self.assertEqual(refresh(), "acc2")
+        self.assertEqual(self.read()[MIP_URL]["env_token_hash"], hashlib.sha256(b"r8").hexdigest())
+        self.assertEqual(self.read()[MIP_URL]["refresh_token"], "r10")
+
+    def test_read_only_store_keeps_the_token_in_memory_with_a_warning(self, get_mock, post_mock):
+        get_mock.side_effect = _get()
+        post_mock.side_effect = [
+            _resp(200, {"access_token": "acc0", "refresh_token": "r0"}),  # import check, then the save fails
             _resp(200, {"access_token": "acc1", "refresh_token": "r2"}),
             _resp(200, {"access_token": "acc2"}),
         ]
-        refresh = keycloak.env_token_refresher(f"{MIP_URL}/services", "r1")
-
-        self.assertEqual(refresh(), "acc1")
-        self.assertEqual(refresh(), "acc2")
+        with patch("mip.keycloak._save", side_effect=OSError("read-only home")):
+            with contextlib.redirect_stderr(io.StringIO()) as err:
+                refresh = keycloak.env_token_refresher(MIP_URL, f"{MIP_URL}/services", "r1")
+                self.assertEqual(refresh(), "acc1")
+                self.assertEqual(refresh(), "acc2")
 
         sent = [call.kwargs["data"]["refresh_token"] for call in post_mock.call_args_list]
-        self.assertEqual(sent, ["r1", "r2"])
-        self.assertEqual(get_mock.call_count, 2)  # auth-config and discovery, once
+        self.assertEqual(sent, ["r1", "r0", "r2"])  # the rotated token r0 survives the failed save
         self.assertFalse(self.file.exists())
+        text = err.getvalue()
+        self.assertIn("MIP_API_TOKEN is set", text)
+        self.assertIn("rotates", text)
+        self.assertNotIn("r1", text)
+        self.assertNotIn("acc1", text)
+
+    def test_read_only_warning_shows_through_from_env(self, get_mock, post_mock):
+        get_mock.side_effect = _get()
+        post_mock.side_effect = [
+            _resp(200, {"access_token": "acc0", "refresh_token": "r0"}),
+            _resp(200, {"access_token": "acc1", "refresh_token": "r2"}),
+            _resp(200, {"access_token": "acc2"}),
+        ]
+        with patch("mip.keycloak._save", side_effect=OSError("read-only home")):
+            with patch.dict(os.environ, {"MIP_URL": MIP_URL, "MIP_API_TOKEN": "r1"}, clear=True):
+                with contextlib.redirect_stderr(io.StringIO()) as err:
+                    transport = Client.from_env()._transport
+                    self.assertEqual(transport.refresh(), "acc1")
+                    self.assertEqual(transport.refresh(), "acc2")
+
+        text = err.getvalue()
+        self.assertEqual(text.count("MIP_API_TOKEN is set"), 1)
+        self.assertIn("could not be saved", text)  # the note that used to be swallowed
+        self.assertNotIn("r1", text)
+
+    def test_failed_save_keeps_the_rotated_token(self, get_mock, post_mock):
+        # A Keycloak that refuses a reused refresh token: the fallback must never
+        # renew with the original environment value after the import renewed it.
+        get_mock.side_effect = _get()
+        used: set[str] = set()
+
+        def rotate_or_refuse(url, data=None, **kwargs):
+            token = data["refresh_token"]
+            if token in used:
+                return _resp(400, {"error": "invalid_grant"})
+            used.add(token)
+            return _resp(200, {"access_token": "acc", "refresh_token": "rot-" + token})
+
+        post_mock.side_effect = rotate_or_refuse
+        with patch("mip.keycloak._save", side_effect=OSError("read-only home")):
+            refresh = keycloak.env_token_refresher(MIP_URL, f"{MIP_URL}/services", "r1")
+            self.assertEqual(refresh(), "acc")
+            self.assertEqual(refresh(), "acc")
+
+        sent = [call.kwargs["data"]["refresh_token"] for call in post_mock.call_args_list]
+        self.assertEqual(sent, ["r1", "rot-r1", "rot-rot-r1"])
+
+    def test_a_new_env_value_imports_instead_of_the_old_sign_in(self, get_mock, post_mock):
+        self.write({MIP_URL: {**_entry("r2"), "env_token_hash": hashlib.sha256(b"r1").hexdigest()}})
+        get_mock.side_effect = _get()
+        post_mock.return_value = _resp(200, {"access_token": "acc1", "refresh_token": "r9"})
+
+        refresh = keycloak.env_token_refresher(MIP_URL, f"{MIP_URL}/services", "r8")
+
+        self.assertEqual(refresh(), "acc1")
+        self.assertEqual([call.kwargs["data"]["refresh_token"] for call in post_mock.call_args_list], ["r8"])
+        self.assertEqual(self.read()[MIP_URL]["env_token_hash"], hashlib.sha256(b"r8").hexdigest())
+        self.assertEqual(self.read()[MIP_URL]["refresh_token"], "r9")
+
+    def test_a_mip_login_sign_in_wins_over_a_leftover_env_token(self, get_mock, post_mock):
+        # The docs' preferred path: the variable is still set from before, but the
+        # saved sign-in is valid, so it is used and the env value is ignored.
+        self.write({MIP_URL: _entry("saved-login")})
+        post_mock.return_value = _resp(200, {"access_token": "acc", "refresh_token": "rot"})
+
+        refresh = keycloak.env_token_refresher(MIP_URL, f"{MIP_URL}/services", "r1")
+
+        self.assertEqual(refresh(), "acc")
+        get_mock.assert_not_called()  # saved endpoints, no discovery, no import
+        self.assertEqual([call.kwargs["data"]["refresh_token"] for call in post_mock.call_args_list], ["saved-login"])
+        # still the same sign-in, only renewed (rotated) in place
+        self.assertEqual(self.read(), {MIP_URL: _entry("rot")})
+
+    def test_a_parallel_import_is_detected_when_the_renewal_fails(self, get_mock, post_mock):
+        get_mock.side_effect = _get()
+        sent: list[str] = []
+
+        def fake_post(url, data=None, **kwargs):
+            sent.append(data["refresh_token"])
+            if len(sent) == 1:
+                # the first process saves its rotated token, then refuses the reuse
+                self.write({MIP_URL: {**_entry("r2"), "env_token_hash": hashlib.sha256(b"r1").hexdigest()}})
+                return _resp(400, {"error": "invalid_grant"})
+            return _resp(200, {"access_token": "acc"})
+
+        post_mock.side_effect = fake_post
+
+        refresh = keycloak.env_token_refresher(MIP_URL, f"{MIP_URL}/services", "r1")
+
+        self.assertEqual(refresh(), "acc")
+        self.assertEqual(sent, ["r1", "r2"])
 
     def test_logout_also_revokes_the_env_token(self, get_mock, post_mock):
         get_mock.side_effect = _get()
@@ -400,14 +549,19 @@ class TestFromEnvRemote(_CredentialsTestCase):
             self.assertEqual(transport.refresh(), "acc")
         fresh.assert_called_once_with(MIP_URL)
 
-    def test_env_token_comes_first_and_needs_mip_url(self):
+    def test_env_token_refresher_is_wired_and_needs_mip_url(self):
         self.write({MIP_URL: _entry()})
         with patch.dict(os.environ, {"MIP_URL": MIP_URL, "MIP_API_TOKEN": "from-env"}, clear=True), patch(
             "mip.keycloak.env_token_refresher", return_value=lambda: "acc"
-        ) as refresher:
+        ) as refresher, contextlib.redirect_stderr(io.StringIO()) as err:
             transport = Client.from_env()._transport
             self.assertEqual(transport.refresh(), "acc")
-        refresher.assert_called_once_with(f"{MIP_URL}/services", "from-env")
+        refresher.assert_called_once_with(MIP_URL, f"{MIP_URL}/services", "from-env")
+        # The last-resort warning, once per process, and never the token value.
+        text = err.getvalue()
+        self.assertEqual(text.count("MIP_API_TOKEN is set"), 1)
+        self.assertIn("mip login --token", text)
+        self.assertNotIn("from-env", text)
         with patch.dict(os.environ, {"MIP_API_TOKEN": "from-env", "MIP_BASE_URL": "http://b/services"}, clear=True):
             with self.assertRaises(MipConfigurationError) as ctx:
                 Client.from_env()

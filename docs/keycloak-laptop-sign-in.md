@@ -1,7 +1,7 @@
 # Signing in to MIP from your own computer
 
-Users get a token from the portal's account page (or run `mip login` where a
-browser is at hand). The `mip` client then has the same data access as the
+Users run `mip login` where a browser is at hand, or `mip login --token` with a
+token from the portal's account page. The `mip` client then has the same data access as the
 portal and renews it by itself, for up to 6 months, or until 30 days without use
 (Keycloak sets both limits). JupyterHub is not involved.
 Cost: one extra Keycloak client per federation.
@@ -14,9 +14,12 @@ Cost: one extra Keycloak client per federation.
 | Secret | Yes, on the server | No |
 | Data roles | Owns them; users are assigned here | None; borrows the platform client's |
 
-The laptop client borrows the roles through "Full scope allowed" and a copy of
-the platform client's role mapper (claim `authorities`). The backend accepts its
-tokens because `azp` names this federation's laptop client
+The laptop client gets the platform client's data roles through its scope, with
+"Full scope allowed" off: the platform client's data roles (or one composite role
+holding them) are added to the laptop client's scope, next to a copy of the
+platform client's role mapper (claim `authorities`). When a new dataset role is
+created it must be added to the laptop client's scope too. The backend accepts
+its tokens because `azp` names this federation's laptop client
 (`KEYCLOAK_CLI_CLIENT_ID`); it ignores `aud`, so the audience mapper in the setup
 below is not what admits them. Roles are defined and assigned once.
 
@@ -26,7 +29,10 @@ below is not what admits them. Roles are defined and assigned once.
 - *Token from the portal* (no browser needed where the client runs): "Create
   access token" on the account page signs in as the laptop client and shows a
   token once (a Keycloak offline refresh token, not an access token); the user
-  pastes it into `mip login --token` or `MIP_API_TOKEN`.
+  pastes it into `mip login --token`. `MIP_API_TOKEN` is a last resort for
+  programs that cannot run `mip login --token`; it is imported into the saved
+  sign-in on first use, and must never go into `.env` files, notebooks or
+  repositories.
 - *`mip login`*: asks the backend which Keycloak client to use
   (`/services/auth-config`), shows a link and a code, and the user approves in
   any browser.
@@ -70,7 +76,9 @@ reconsidering if creating clients per federation proves hard.
 
 1. Keycloak: create `mip-cli-<federation>`: public, standard flow on with PKCE
    S256 (redirect URI `<portal>/account`, web origin `<portal>`), device grant on,
-   Full scope allowed, default `roles` scope replaced by a User Client Role mapper
+   Full scope allowed **off** with the platform client's data roles (or one
+   composite role) added to the laptop client's scope — new dataset roles must be
+   added there too —, default `roles` scope replaced by a User Client Role mapper
    for the platform client, audience mapper to the platform client,
    `offline_access`, Client Offline Session Max 180 days (full list in the `mip`
    repository, `deployment/kubernetes/README.md`).
