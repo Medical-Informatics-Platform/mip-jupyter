@@ -85,8 +85,11 @@ class Client:
         """Connect using environment variables.
 
         In the MIP notebook everything is preset. From your own computer set MIP_URL
-        (the portal, e.g. https://host) and either sign in once with `mip login`, or set
-        MIP_API_TOKEN to a token created on the portal's account page.
+        (the portal, e.g. https://host) and either sign in once with `mip login`, or —
+        only for programs that cannot run `mip login --token` — set MIP_API_TOKEN to a
+        token created on the portal's account page. The token is imported into the
+        saved sign-in on first use; never put it in notebooks, .env files or
+        repositories.
         """
         timeout = float(os.getenv("PLATFORM_BACKEND_TIMEOUT", "30"))
         remote = remote_urls()
@@ -98,7 +101,12 @@ class Client:
             # Leftover MIP_TOKEN/PLATFORM_TOKEN or a token file may belong to another
             # federation and must not reach this host.
             if env_token:
-                return cls(base_url, timeout=timeout, refresh=keycloak.env_token_refresher(base_url, env_token))
+                keycloak.warn_env_token()
+                return cls(
+                    base_url,
+                    timeout=timeout,
+                    refresh=keycloak.env_token_refresher(mip_url, base_url, env_token),
+                )
             if not keycloak.is_signed_in(mip_url):
                 raise MipConfigurationError(
                     f"You are not signed in to {mip_url}. Run `mip login`, or set MIP_API_TOKEN "
