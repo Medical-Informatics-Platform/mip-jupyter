@@ -137,10 +137,11 @@ class Transport:
                 timeout=min(self.timeout, 15.0),
                 allow_redirects=False,
             )
+            # Errors and 3xx alike: redirects are not followed, and a 3xx means the hub wants a login.
+            if response.status_code != 200:
+                return False
+            response.raise_for_status()
         except requests.RequestException:
-            return False
-        # Errors and 3xx alike: redirects are not followed, and a 3xx means the hub wants a login.
-        if response.status_code != 200:
             return False
         try:
             data = response.json() if response.content else {}
