@@ -98,16 +98,32 @@ def default_portal() -> str | None:
     return portal if isinstance(portal, str) else None
 
 
+def _json_object(response: requests.Response) -> dict[str, Any]:
+    try:
+        body = response.json()
+    except ValueError:
+        return {}
+    return body if isinstance(body, dict) else {}
+
+
 def _get_json(url: str, what: str, *, not_found: str | None = None) -> dict[str, Any]:
     try:
         response = requests.get(url, timeout=TIMEOUT, allow_redirects=False)
+        # Backends without the endpoint answer 401: it is behind their login.
+        if response.status_code != 200:
+            if (response.status_code == 401 or response.status_code == 404) and not_found:
+                raise MipConfigurationError(not_found)
+            response.raise_for_status()
+    except MipConfigurationError:
+        raise
+    except requests.HTTPError as exc:
+        raise MipBackendError(
+            f"Unexpected answer from {what} ({url}: status {response.status_code})."
+        ) from exc
     except requests.RequestException as exc:
         raise MipBackendError(f"Could not reach {what} ({url}: {type(exc).__name__}).") from exc
-    # Backends without the endpoint answer 401: it is behind their login.
-    if response.status_code in (401, 404) and not_found:
-        raise MipConfigurationError(not_found)
     try:
-        data = response.json() if response.status_code == 200 else None
+        data = response.json()
     except ValueError:
         data = None
     if not isinstance(data, dict):
@@ -118,13 +134,14 @@ def _get_json(url: str, what: str, *, not_found: str | None = None) -> dict[str,
 def _post(url: str, data: dict[str, str]) -> tuple[int, dict[str, Any]]:
     try:
         response = requests.post(url, data=data, timeout=TIMEOUT, allow_redirects=False)
+        # Device-flow polling and refresh use non-200 (authorization_pending, invalid_grant).
+        # The caller reads that status; it is not a transport failure.
+        if response.status_code != 200:
+            return response.status_code, _json_object(response)
+        response.raise_for_status()
     except requests.RequestException as exc:
         raise MipBackendError(f"Could not reach Keycloak ({url}: {type(exc).__name__}).") from exc
-    try:
-        body = response.json()
-    except ValueError:
-        body = {}
-    return response.status_code, body if isinstance(body, dict) else {}
+    return response.status_code, _json_object(response)
 
 
 def _discover(backend_url: str) -> dict[str, str]:

@@ -1,10 +1,14 @@
 # syntax=docker/dockerfile:1.7
 # Pinned by digest so pulls stay reproducible and CHP/Node stay in the base;
 # bump the digest to pick up base fixes.
-FROM jupyterhub/jupyterhub:6.1.1-2@sha256:608dcd8f41ba1551f80f634c55c91c65737a59ccfa446b8cf98fd912f97204f8
+FROM jupyterhub/jupyterhub:6.1.1-7@sha256:48973496688583afca1c29571c7e69849ed9b9ffb74874af29b2c87e787aa8c6
 
-# Base tag lags on OS security fixes (e.g. openssl). /srv/venv has its own
-# pip/setuptools/wheel, so the stale Ubuntu copies can go.
+# 6.1.1-7 ships pebble 1.33.2 built with Go 1.27.3 (stdlib CVE-2026-111943 and
+# the 1.27.2 set), oauthlib 4.0.1, tornado 6.6, and follow-redirects 1.16.2.
+# It does not ship npm or msgpack (6.1.1-0's msgpack 1.1.2 was CVE-2026-114613).
+# The tag still lags Ubuntu security: apt 3.2.0 (CVE-2026-109518) and pcre2
+# 10.46-1build1. upgrade installs apt 3.2.1ubuntu0.1 and pcre2 10.46-1ubuntu0.1.
+# /srv/venv has its own pip/setuptools/wheel, so the stale Ubuntu copies can go.
 # nosemgrep: semgrep-rules.dockerfile.best-practice.avoid-apt-get-upgrade
 RUN apt-get update \
     && apt-get upgrade -y \
@@ -12,20 +16,15 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# The base ships configurable-http-proxy's tree with follow-redirects 1.16.0
-# (CVE-2026-111755/111756). `npm update` moves it to the latest release within
-# http-proxy-3's semver range; scripts are skipped so the base's postinstall is not re-run.
-RUN npm --prefix /usr/local/lib update --ignore-scripts --no-audit --no-fund follow-redirects \
-    && rm -rf /root/.npm
-
-# oauthlib, msgpack and Mako are JupyterHub dependencies, pinned past its
-# versions for CVE fixes.
+# oauthlib 4.0.1 is the CVE-2026-49272 fix already in this base. Keep the pin
+# so a later base cannot silently install 4.0.0. Do not pin msgpack: JupyterHub
+# 6.1.1 does not depend on it, and installing it would put the package back.
+# Mako stays pinned at the version this base already ships.
 RUN pip install --no-cache-dir --disable-pip-version-check \
         jupyterhub-kubespawner==7.1.0 \
         jupyterhub-idle-culler==2.0.0 \
         oauthenticator==17.4.0 \
         oauthlib==4.0.1 \
-        msgpack==1.2.3 \
         Mako==1.4.3
 
 COPY docker/hub/jupyterhub_config.py \
