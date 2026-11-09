@@ -31,6 +31,13 @@ class TestPreprocessing(unittest.TestCase):
             {"Age": "median", "APOE4": "constant"},
         )
 
+    def test_most_frequent_strategy_passes_through_for_categorical_variables(self):
+        sex = Var("sex", label="Sex")
+        handler = MissingValuesHandler(strategies={sex: "most_frequent"})
+
+        self.assertEqual(handler.spec()["parameters"]["strategies"], {"sex": "most_frequent"})
+        self.assertEqual(handler.user_summary()["strategies"], {"Sex": "most_frequent"})
+
     def test_outlier_winsorizer_omits_empty_optional_maps(self):
         mmse = Var("mmse", label="MMSE")
         handler = OutlierWinsorizer(strategies={mmse: "iqr"}, tails={mmse: "both"}, folds={mmse: 1.5})

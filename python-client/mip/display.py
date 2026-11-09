@@ -138,6 +138,13 @@ Useful methods:
 - pipeline.pearson_correlation(x=..., y=...)
 - pipeline.logistic_regression(x=[...], y=..., positive_class=...)
 
+Preprocessing:
+  mip.Pipeline(analysis_set=..., handle_missing=MissingValuesHandler(strategies={mmse: "mean", sex: "most_frequent"}))
+  # strategies: "drop" / "mean" / "median" / "most_frequent" / "constant";
+  # mean & median are numerical-only; "most_frequent" fills with the most
+  # frequent value in each dataset (datasets can get different values);
+  # "constant" needs fill_values and works for categorical variables too
+
 Typical next step:
   pipeline.recommend_algorithms()
   result = pipeline.histogram(variable=mmse, bins=20)""",

@@ -414,6 +414,22 @@ class TestPipelineKMeansClusterCreator(unittest.TestCase):
         self.assertEqual(analysis["preprocessing"][0]["parameters"]["strategies"], {"a": "mean", "b": "drop"})
         self.assertEqual(handler.spec()["parameters"]["strategies"], {"a": "mean"})
 
+    def test_user_strategy_wins_over_cluster_drop_default(self):
+        transport = MagicMock()
+        transport.post.return_value = {"status": "success", "result": {}}
+        a, b, diagnosis, analysis_set = self._pipeline_inputs(transport)
+        creator = KMeansClusterCreator(label="Cluster", source=_kmeans_result())
+        handler = MissingValuesHandler(strategies={a: "mean", b: "most_frequent"})
+
+        Pipeline(
+            analysis_set=analysis_set,
+            handle_missing=handler,
+            new_columns=[creator],
+        ).chi_square_test(x=creator.variable, y=diagnosis)
+
+        analysis = transport.post.call_args.args[1]["analysis"]
+        self.assertEqual(analysis["preprocessing"][0]["parameters"]["strategies"], {"a": "mean", "b": "most_frequent"})
+
     def test_missing_values_handler_is_added_for_cluster_variables(self):
         transport = MagicMock()
         transport.post.return_value = {"status": "success", "result": {}}

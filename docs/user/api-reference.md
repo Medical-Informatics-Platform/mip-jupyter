@@ -53,6 +53,7 @@ String-match operators (`contains`, `starts_with`, `ends_with`) may not be avail
 
 ```python
 MissingValuesHandler(strategies={age: "median", mmse: "mean"})
+MissingValuesHandler(strategies={sex: "most_frequent"})  # categorical: fills with the most frequent value in each dataset; datasets can get different values
 OutlierWinsorizer(strategies={mmse: "iqr"}, tails={mmse: "both"}, folds={mmse: 1.5})
 CategoricalColumnCreator(label="Cognitive profile", rules={...}, default_enumeration="Other")
 ```
