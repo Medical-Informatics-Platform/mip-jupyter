@@ -80,5 +80,4 @@ reconsidering if creating clients per federation proves hard.
 
 Client, hub, backend and portal are on `master` of their repositories. The chart
 setting `keycloak.cliClientId` is on `mip` branch
-`combined/keycloak-cli-and-jupyterhub-spawner`, not yet on `master`. Rollout state
-per federation: `keycloak-laptop-sign-in-review.md`.
+`combined/keycloak-cli-and-jupyterhub-spawner`, not yet on `master`.
