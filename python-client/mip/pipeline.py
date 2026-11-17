@@ -121,7 +121,7 @@ class Pipeline(PipelineAlgorithmsMixin):
             payload["description"] = description
 
         transport = self.analysis_set._require_transport()
-        endpoint = "/experiments/preview" if mode == "transient" else "/experiments/runs" if mode == "persisted" else None
+        endpoint = "/analyses/preview" if mode == "transient" else "/analyses/runs" if mode == "persisted" else None
         if endpoint is None:
             raise ValueError("mode must be 'transient' or 'persisted'.")
         response = transport.post(endpoint, payload)
@@ -129,7 +129,7 @@ class Pipeline(PipelineAlgorithmsMixin):
         _raise_for_experiment_error(response, raw)
         if mode == "persisted":
             # The saved experiment comes back without its result; keep the run's result alongside its uuid.
-            saved = transport.post("/experiments", {"runId": response["uuid"], "name": payload["name"]})
+            saved = transport.post("/analyses", {"runId": response["uuid"], "name": payload["name"]})
             response = {**saved, "result": raw}
         kwargs = dict(result_kwargs or {})
         return result_class(raw=raw, payload=response, result_type=result_type or name, **kwargs)

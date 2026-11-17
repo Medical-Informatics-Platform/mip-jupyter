@@ -48,8 +48,8 @@ class TestPipeline(unittest.TestCase):
         ).histogram(variable=mmse, bins=20)
 
         endpoint, payload = transport.post.call_args.args
-        analysis = payload["analysis"]
-        self.assertEqual(endpoint, "/experiments/preview")
+        analysis = payload["analysisRequest"]
+        self.assertEqual(endpoint, "/analyses/preview")
         transport.post.assert_called_once()
         self.assertEqual(analysis["algorithm"]["name"], "histogram")
         self.assertEqual(analysis["algorithm"]["y"], ["mmse"])
@@ -79,12 +79,12 @@ class TestPipeline(unittest.TestCase):
         result = Pipeline(analysis_set=analysis_set).logistic_regression(x=[age], y=diagnosis, positive_class="AD", mode="persisted")
 
         (run_endpoint, payload), (save_endpoint, save_body) = [c.args for c in transport.post.call_args_list]
-        analysis = payload["analysis"]
-        self.assertEqual(run_endpoint, "/experiments/runs")
+        analysis = payload["analysisRequest"]
+        self.assertEqual(run_endpoint, "/analyses/runs")
         self.assertEqual(analysis["algorithm"]["name"], "logistic_regression")
         self.assertEqual(analysis["algorithm"]["x"], ["age"])
         self.assertEqual(analysis["algorithm"]["y"], ["diagnosis"])
-        self.assertEqual(save_endpoint, "/experiments")
+        self.assertEqual(save_endpoint, "/analyses")
         self.assertEqual(save_body, {"runId": "run-1", "name": payload["name"]})
         self.assertEqual(result.result_type, "logistic_regression")
         self.assertEqual(result.raw, model)
@@ -102,7 +102,7 @@ class TestPipeline(unittest.TestCase):
             Pipeline(analysis_set=analysis_set).histogram(variable=mmse, mode="persisted")
 
         transport.post.assert_called_once()
-        self.assertEqual(transport.post.call_args.args[0], "/experiments/runs")
+        self.assertEqual(transport.post.call_args.args[0], "/analyses/runs")
 
     def test_t_test_serializes_required_backend_parameters(self):
         transport = MagicMock()
@@ -123,7 +123,7 @@ class TestPipeline(unittest.TestCase):
             group_b="CN",
         )
 
-        parameters = transport.post.call_args.args[1]["analysis"]["algorithm"]["parameters"]
+        parameters = transport.post.call_args.args[1]["analysisRequest"]["algorithm"]["parameters"]
         self.assertEqual(
             parameters,
             {
@@ -160,7 +160,7 @@ class TestPipeline(unittest.TestCase):
             new_columns=[creator],
         ).histogram(variable=mmse)
 
-        analysis = transport.post.call_args.args[1]["analysis"]
+        analysis = transport.post.call_args.args[1]["analysisRequest"]
         self.assertEqual(
             [step["name"] for step in analysis["preprocessing"]],
             ["missing_values_handler", "categorical_column_creator"],
@@ -192,7 +192,7 @@ class TestPipeline(unittest.TestCase):
             new_columns=[creator],
         ).logistic_regression(x=[age, creator.variable], y=diagnosis, positive_class="AD")
 
-        analysis = transport.post.call_args.args[1]["analysis"]
+        analysis = transport.post.call_args.args[1]["analysisRequest"]
         self.assertEqual(analysis["algorithm"]["x"], ["age", "cognitive_profile"])
         self.assertNotIn("cognitive_profile", analysis["inputdata"]["variables"])
         self.assertIn("age", analysis["inputdata"]["variables"])
@@ -227,7 +227,7 @@ class TestPipeline(unittest.TestCase):
 
         Pipeline(analysis_set=analysis_set).anova_oneway(group_by=diagnosis, outcome=age)
 
-        analysis = transport.post.call_args.args[1]["analysis"]
+        analysis = transport.post.call_args.args[1]["analysisRequest"]
         self.assertEqual(analysis["algorithm"]["name"], "anova_oneway")
         self.assertEqual(analysis["algorithm"]["x"], ["diagnosis"])
         self.assertEqual(analysis["algorithm"]["y"], ["age"])
@@ -255,7 +255,7 @@ class TestPipeline(unittest.TestCase):
             handle_missing=MissingValuesHandler(strategies={age: "median"}),
         ).paired_t_test(measurement_1=age, measurement_2=mmse)
 
-        analysis = transport.post.call_args.args[1]["analysis"]
+        analysis = transport.post.call_args.args[1]["analysisRequest"]
         self.assertEqual(
             [step["name"] for step in analysis["preprocessing"]],
             ["longitudinal_transformer", "missing_values_handler"],
@@ -283,7 +283,7 @@ class TestPipeline(unittest.TestCase):
 
         Pipeline(analysis_set=analysis_set).kmeans(features=[age, mmse])
 
-        analysis = transport.post.call_args.args[1]["analysis"]
+        analysis = transport.post.call_args.args[1]["analysisRequest"]
         self.assertEqual(analysis["algorithm"]["name"], "kmeans")
         self.assertEqual(analysis["algorithm"]["y"], ["age", "mmse"])
         self.assertEqual(
@@ -310,7 +310,7 @@ class TestPipeline(unittest.TestCase):
             k_max=6,
         )
 
-        parameters = transport.post.call_args.args[1]["analysis"]["algorithm"]["parameters"]
+        parameters = transport.post.call_args.args[1]["analysisRequest"]["algorithm"]["parameters"]
         self.assertEqual(
             parameters,
             {"k_selection": "elbow", "k_min": 2, "k_max": 6, "maxiter": 100, "tol": 0.0001},
@@ -333,7 +333,7 @@ class TestPipeline(unittest.TestCase):
             group_by=diagnosis,
         )
 
-        analysis = transport.post.call_args.args[1]["analysis"]
+        analysis = transport.post.call_args.args[1]["analysisRequest"]
         self.assertEqual(analysis["algorithm"]["name"], "standardized_mean_difference")
         self.assertEqual(analysis["algorithm"]["x"], ["diagnosis"])
         self.assertEqual(analysis["algorithm"]["y"], ["age"])
@@ -402,7 +402,7 @@ class TestPipelineKMeansClusterCreator(unittest.TestCase):
             new_columns=[creator],
         ).chi_square_test(x=creator.variable, y=diagnosis)
 
-        analysis = transport.post.call_args.args[1]["analysis"]
+        analysis = transport.post.call_args.args[1]["analysisRequest"]
         variables = analysis["inputdata"]["variables"]
         self.assertIn("a", variables)
         self.assertIn("b", variables)
@@ -427,7 +427,7 @@ class TestPipelineKMeansClusterCreator(unittest.TestCase):
             new_columns=[creator],
         ).chi_square_test(x=creator.variable, y=diagnosis)
 
-        analysis = transport.post.call_args.args[1]["analysis"]
+        analysis = transport.post.call_args.args[1]["analysisRequest"]
         self.assertEqual(analysis["preprocessing"][0]["parameters"]["strategies"], {"a": "mean", "b": "most_frequent"})
 
     def test_missing_values_handler_is_added_for_cluster_variables(self):
@@ -441,7 +441,7 @@ class TestPipelineKMeansClusterCreator(unittest.TestCase):
             y=diagnosis,
         )
 
-        analysis = transport.post.call_args.args[1]["analysis"]
+        analysis = transport.post.call_args.args[1]["analysisRequest"]
         self.assertEqual(
             [step["name"] for step in analysis["preprocessing"]],
             ["missing_values_handler", "kmeans_cluster_creator"],

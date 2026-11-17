@@ -66,7 +66,7 @@ class TestClient(unittest.TestCase):
         transport = MagicMock()
         client._transport = transport
         transport.get.side_effect = [
-            {"items": [{"id": "exp-1"}]},
+            {"analyses": [{"id": "exp-1"}], "currentPage": 0, "totalPages": 1, "totalAnalyses": 1},
             {"id": "exp-1", "status": "success"},
         ]
 
@@ -75,9 +75,9 @@ class TestClient(unittest.TestCase):
         self.assertEqual(registry.list(), [{"id": "exp-1"}])
         self.assertEqual(registry.get("exp-1"), {"id": "exp-1", "status": "success"})
         self.assertIsNone(registry.delete("exp-1"))
-        transport.get.assert_any_call("/experiments")
-        transport.get.assert_any_call("/experiments/exp-1")
-        transport.delete.assert_called_once_with("/experiments/exp-1")
+        transport.get.assert_any_call("/analyses")
+        transport.get.assert_any_call("/analyses/exp-1")
+        transport.delete.assert_called_once_with("/analyses/exp-1")
 
 
 class TestTransport(unittest.TestCase):

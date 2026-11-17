@@ -221,7 +221,7 @@ def build_experiment_payload(
     )
     return {
         "name": name,
-        "analysis": {
+        "analysisRequest": {
             "request_id": None,
             "inputdata": build_inputdata(
                 data_model_name=data_model_name,

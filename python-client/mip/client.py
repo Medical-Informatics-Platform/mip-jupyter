@@ -146,16 +146,16 @@ class ExperimentRegistry:
         self._transport = transport
 
     def list(self) -> list[dict[str, Any]]:
-        payload = self._transport.get("/experiments")
+        payload = self._transport.get("/analyses")
         if isinstance(payload, dict):
-            payload = payload.get("experiments") or payload.get("items") or []
+            payload = payload.get("analyses") or payload.get("items") or []
         if not isinstance(payload, list):
             return []
         return [item for item in payload if isinstance(item, dict)]
 
     def get(self, experiment_id: str) -> dict[str, Any]:
-        payload = self._transport.get(f"/experiments/{experiment_id}")
+        payload = self._transport.get(f"/analyses/{experiment_id}")
         return payload if isinstance(payload, dict) else {}
 
     def delete(self, experiment_id: str) -> None:
-        self._transport.delete(f"/experiments/{experiment_id}")
+        self._transport.delete(f"/analyses/{experiment_id}")
