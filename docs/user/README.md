@@ -10,7 +10,7 @@ Welcome to the Medical Informatics Platform (MIP) Jupyter workspace. The `mip` P
 |------|---------|
 | [`Welcome.ipynb`](../Welcome.ipynb) | Guided getting-started walkthrough |
 | [`examples/`](../examples/) | Canonical analysis notebooks, read-only and updated centrally; *Save Notebook As* into `scratch/` to adapt one |
-| [`scratch/`](../scratch/) | Your notebooks and experiments |
+| [`scratch/`](../scratch/) | Your notebooks and analyses |
 | `docs/` (this folder) | MIP client help and troubleshooting |
 
 ## Guides

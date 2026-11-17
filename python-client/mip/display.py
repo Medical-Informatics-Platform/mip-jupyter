@@ -30,7 +30,7 @@ Client help
 Useful methods:
 - client.catalog()       browse data models, datasets, and variables
 - client.algorithms()    search available algorithms
-- client.experiments()   list or run persisted experiments
+- client.analyses()     list or run persisted analyses
 
 Typical next step:
   catalog = client.catalog()
@@ -156,7 +156,7 @@ Useful methods:
 - result.to_frame()   tabular preview of the main result table
 - result.summary()    backend result payload (same as .raw)
 - result.raw          raw result dict or value
-- result.payload      full experiment response
+- result.payload      full analysis response
 - result.plot()       matplotlib chart (histogram, describe, t-test, chi-square,
                       pearson, logistic odds-ratio forest, …)
 
@@ -172,7 +172,7 @@ Useful methods:
 - result.plot()           odds-ratio forest plot
 - result.summary()        backend result payload
 - result.raw              raw result dict
-- result.payload          full experiment response
+- result.payload          full analysis response
 - result.feature_schema() feature names from logistic regression
 - result.to_sklearn()     export as sklearn classifier (logistic only)
 

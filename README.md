@@ -53,7 +53,7 @@ Recommended starting path:
 2. Read `docs/quickstart.md` for the basic workflow.
 3. Use `examples/FERES/feres_analysis.ipynb` as a reference analysis (read-only;
    *File > Save Notebook As* into `scratch/` to adapt it).
-4. Save personal notebooks and experiments under `scratch/`.
+4. Save personal notebooks and analyses under `scratch/`.
 
 The source for the user documentation is [`docs/user/`](docs/user/). It is
 copied into `workspace/docs/` for local development and into

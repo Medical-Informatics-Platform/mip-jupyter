@@ -1,6 +1,6 @@
 # mip-client
 
-Python client for MIP federated analysis via platform-backend experiments.
+Python client for MIP federated analysis via platform-backend analyses.
 The distribution is `mip-client`; the import name is `mip`.
 
 This directory is a self-contained package: it never imports or reads files
@@ -54,8 +54,8 @@ them. The guide pages ship in `mip/agent_docs/`; the code is in `mip/agent.py` a
 
 | Object | Purpose |
 |--------|---------|
-| `Client` | Owns backend transport and creates catalog/algorithm/experiment facades |
-| `ExperimentRegistry` | Lists, reads, and deletes persisted experiments |
+| `Client` | Owns backend transport and creates catalog/algorithm/analysis facades |
+| `AnalysisRegistry` | Lists, reads, and deletes persisted analyses |
 | `Catalog` | Discovers data models, variables, and datasets |
 | `AnalysisSet` | Holds selected data model, datasets, and variables |
 | `Pipeline` | Applies filters/preprocessing and executes named algorithms |

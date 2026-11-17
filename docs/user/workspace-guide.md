@@ -7,7 +7,7 @@
   Welcome.ipynb             Getting started
   examples/                 Canonical templates, read-only and updated centrally
   docs/                     User documentation (this folder)
-  scratch/                  Your notebooks and experiments
+  scratch/                  Your notebooks and analyses
 ```
 
 Without the shared examples mount, `examples/` is absent or, in a home created by

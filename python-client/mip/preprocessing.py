@@ -1,4 +1,4 @@
-"""Preprocessing step builders for experiment payloads."""
+"""Preprocessing step builders for analysis payloads."""
 
 from __future__ import annotations
 

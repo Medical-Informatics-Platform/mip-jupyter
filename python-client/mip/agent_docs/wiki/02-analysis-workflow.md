@@ -51,7 +51,7 @@ pipeline.histogram(variable=mmse, bins=20)
 Order is fixed: `AnalysisSet` → filters → missing → outliers → new_columns → algorithm.
 
 Default run mode is transient; use persisted only when the user asks to keep the
-experiment. Inspect with `result.summary()` / `result.raw` / `result.payload`.
+analysis. Inspect with `result.summary()` / `result.raw` / `result.payload`.
 
 ## Pitfalls
 

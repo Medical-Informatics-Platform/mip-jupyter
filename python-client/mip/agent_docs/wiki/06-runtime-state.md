@@ -13,7 +13,7 @@ Keep this distinction:
 - `AGENTS.md` - mandatory repo-level startup rules
 - `python-client/mip/agent_docs/` - static operating manual
 - `.llm/` - runtime session/task memory
-- `scratch/` - notebooks, experiments, temporary work
+- `scratch/` - notebooks, analyses, temporary work
 
 ## Resume boot order (compaction / handoff only)
 
@@ -61,7 +61,7 @@ Update `state.md` only when objective, mode, status, plan, risk, next actions, v
 
 For simple notebook edits, inspect the outline or relevant cells, edit only requested cells, and run only affected cells when code changed. Do not run the whole notebook unless needed.
 
-For long MIP/Jupyter/statistical workflows, use `analysis-long` mode and track data model, dataset IDs, variable IDs, filters, cohort definition, pipeline, experiment ID, polling status, notebook path, affected cells, execution status, and summarized results.
+For long MIP/Jupyter/statistical workflows, use `analysis-long` mode and track data model, dataset IDs, variable IDs, filters, cohort definition, pipeline, analysis ID, polling status, notebook path, affected cells, execution status, and summarized results.
 
 After compaction or handoff, **resume from existing artifacts** (`scratch/<name>.py`, output CSVs, `scratch/*.ipynb`) with bounded reads. Do not regenerate large scripts via heredocs or `write_stdin`. For novel stroke work, write the ONE `scratch/<name>.py` with `scratch-write-file` if no scratch script exists yet. After a verified script run, transfer to notebook with `scratch-to-notebook`. Refresh workflow detail with `read-guide --page recipes/stroke-analysis --topic "novel"` when needed.
 

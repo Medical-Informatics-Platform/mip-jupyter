@@ -42,7 +42,7 @@ Filters:
 Cohort definition:
 AnalysisSet:
 Pipeline:
-Experiment ID:
+Analysis ID:
 Polling/waiting status:
 Last successful command:
 Last failed command:

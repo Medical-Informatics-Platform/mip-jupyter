@@ -12,7 +12,7 @@ from .labels import build_field_enumeration_lookups
 from .labels import sanitize_explain_dict
 from .catalog_registry import PIPELINE_METHOD_NAMES
 from .pipeline_algorithms import PipelineAlgorithmsMixin
-from .request_builder import build_experiment_payload
+from .request_builder import build_analysis_payload
 from .request_builder import effective_missing_handler
 from .results import Result
 
@@ -102,7 +102,7 @@ class Pipeline(PipelineAlgorithmsMixin):
         result_type: str | None = None,
         result_kwargs: dict[str, Any] | None = None,
     ):
-        payload = build_experiment_payload(
+        payload = build_analysis_payload(
             name=name_for_ui or name,
             data_model_name=self.analysis_set.data_model_name(),
             datasets=self.analysis_set.datasets,
@@ -126,9 +126,9 @@ class Pipeline(PipelineAlgorithmsMixin):
             raise ValueError("mode must be 'transient' or 'persisted'.")
         response = transport.post(endpoint, payload)
         raw = _extract_result(response)
-        _raise_for_experiment_error(response, raw)
+        _raise_for_analysis_error(response, raw)
         if mode == "persisted":
-            # The saved experiment comes back without its result; keep the run's result alongside its uuid.
+            # The saved analysis comes back without its result; keep the run's result alongside its uuid.
             saved = transport.post("/analyses", {"runId": response["uuid"], "name": payload["name"]})
             response = {**saved, "result": raw}
         kwargs = dict(result_kwargs or {})
@@ -180,7 +180,7 @@ def _extract_result(response: Any) -> Any:
     return response
 
 
-def _raise_for_experiment_error(response: Any, raw: Any) -> None:
+def _raise_for_analysis_error(response: Any, raw: Any) -> None:
     if not isinstance(response, dict):
         return
     status = str(response.get("status") or "").strip().lower()
@@ -188,4 +188,4 @@ def _raise_for_experiment_error(response: Any, raw: Any) -> None:
     if not error and isinstance(raw, dict):
         error = raw.get("errorMessage") or raw.get("error") or raw.get("message")
     if status in {"error", "failed", "failure"} or error:
-        raise MipBackendError(f"Experiment failed: status={response.get('status')!r}; details={error or raw!r}")
+        raise MipBackendError(f"Analysis failed: status={response.get('status')!r}; details={error or raw!r}")

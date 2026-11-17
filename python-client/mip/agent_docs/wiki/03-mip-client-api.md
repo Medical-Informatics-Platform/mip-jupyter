@@ -53,7 +53,7 @@ pipeline.logistic_regression(x=[age, sex], y=diagnosis, positive_class="AD")
 ```
 
 No `Pipeline.run()`. `new_columns` takes creators. Registries:
-`client.algorithms().list()` / `.search(...)`; `client.experiments().list()`.
+`client.algorithms().list()` / `.search(...)`; `client.analyses().list()`.
 `Algorithm.summary()` → `{label, description, type}` only.
 
 ## Results

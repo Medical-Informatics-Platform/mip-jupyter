@@ -22,7 +22,7 @@ Restart the kernel after signing in again from the portal. If problems persist, 
 
 ## Where to save work
 
-- Use `scratch/` for your own notebooks and experiments.
+- Use `scratch/` for your own notebooks and analyses.
 - Canonical examples under `examples/` are read-only and updated centrally. To adapt one, open it and use *File > Save Notebook As* into `scratch/`.
 
 See [Workspace guide](workspace-guide.md) for details.

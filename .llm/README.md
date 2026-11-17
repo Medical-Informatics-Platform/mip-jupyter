@@ -195,7 +195,7 @@ For long MIP/Jupyter/statistical work, use `analysis-long` mode and keep stricte
 - filters
 - cohort definition
 - pipeline
-- experiment ID
+- analysis ID
 - polling/waiting status
 - notebook path
 - affected cells

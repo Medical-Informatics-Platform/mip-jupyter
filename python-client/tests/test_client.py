@@ -61,7 +61,7 @@ class TestClient(unittest.TestCase):
         self.assertFalse(hasattr(client, "get"))
         self.assertFalse(hasattr(client, "post"))
 
-    def test_experiment_registry_maps_public_methods_to_backend_endpoints(self):
+    def test_analysis_registry_maps_public_methods_to_backend_endpoints(self):
         client = Client("http://backend/services")
         transport = MagicMock()
         client._transport = transport
@@ -70,7 +70,7 @@ class TestClient(unittest.TestCase):
             {"id": "exp-1", "status": "success"},
         ]
 
-        registry = client.experiments()
+        registry = client.analyses()
 
         self.assertEqual(registry.list(), [{"id": "exp-1"}])
         self.assertEqual(registry.get("exp-1"), {"id": "exp-1", "status": "success"})

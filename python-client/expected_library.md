@@ -25,7 +25,7 @@ Contract for the `mip` library (distribution `mip-client`), used from Jupyter no
 | No old table API | No `.table()` method; old `ResultTable` API is removed. |
 | AnalysisSet scope | Holds only selected data model, datasets, and variables. |
 | Fixed Pipeline flow | Selection -> filters -> missing handling -> outlier handling -> new_columns -> algorithm. |
-| Experiment payload | `analysisRequest: AnalysisRequestDTO` with ordered `preprocessing` array and `inputdata.variables`. |
+| Analysis payload | `analysisRequest: AnalysisRequestDTO` with ordered `preprocessing` array and `inputdata.variables`. |
 | Algorithm methods | `describe`, `histogram`, `t_test`, `pearson_correlation`, `chi_square_test`, `logistic_regression`. |
 | Execution endpoints | `mode="transient"` posts `/analyses/preview`; `mode="persisted"` posts `/analyses/runs`, then `/analyses` with `{runId, name}` on success. |
 | Preprocessing shape | Ordered preprocessing steps; strategy dictionaries keyed by variable code. |
@@ -70,7 +70,7 @@ from mip.preprocessing import CategoricalColumnCreator, MissingValuesHandler, Ou
 client = mip.Client.from_env()
 catalog = client.catalog()
 algorithms = client.algorithms()
-experiments = client.experiments()
+analyses = client.analyses()
 ```
 
 Runnable companion notebook: `workspace/Welcome.ipynb`.
@@ -266,7 +266,7 @@ Execution order is fixed:
 AnalysisSet selection -> filters -> handle_missing -> outlier_handling -> new_columns -> algorithm
 ```
 
-Experiment requests use:
+Analysis requests use:
 
 ```python
 {
@@ -317,18 +317,18 @@ Each returned `Algorithm` exposes `.spec()` for the backend DTO and `.summary()`
 - Filter `isin([...])` accepts enumeration labels; codes are mapped during payload serialization.
 - `CategoricalColumnCreator(label=...)` replaces the `code=` parameter; internal code is derived automatically.
 
-## Experiment Registry
+## Analysis Registry
 
 ```python
-experiments = client.experiments()
-experiments.list()
-experiments.get("experiment-id")
-experiments.delete("experiment-id")
+analyses = client.analyses()
+analyses.list()
+analyses.get("analysis-id")
+analyses.delete("analysis-id")
 ```
 
-The experiment registry is for persisted experiment management. Pipeline execution remains the primary analysis API.
+The analysis registry is for persisted analysis management. Pipeline execution remains the primary analysis API.
 
-## Experiment Modes
+## Analysis Modes
 
 All `AnalysisSet` and `Pipeline` execution methods default to transient execution:
 
@@ -337,7 +337,7 @@ pipeline.histogram(variable=mmse)                  # POST /analyses/preview
 pipeline.histogram(variable=mmse, mode="persisted") # POST /analyses/runs, then POST /analyses {runId, name}
 ```
 
-Persisted execution saves only successful runs. `result.payload["uuid"]` is the saved experiment id, and `result.raw` is the run's result.
+Persisted execution saves only successful runs. `result.payload["uuid"]` is the saved analysis id, and `result.raw` is the run's result.
 
 ## Results
 

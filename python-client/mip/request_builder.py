@@ -1,4 +1,4 @@
-"""Build AnalysisRequestDTO experiment payloads for platform-backend."""
+"""Build AnalysisRequestDTO analysis payloads for platform-backend."""
 
 from __future__ import annotations
 
@@ -192,7 +192,7 @@ def build_preprocessing_steps(
     return steps or None
 
 
-def build_experiment_payload(
+def build_analysis_payload(
     *,
     name: str,
     data_model_name: str,

@@ -130,8 +130,8 @@ class Client:
 
         return AlgorithmRegistry(self._transport)
 
-    def experiments(self):
-        return ExperimentRegistry(self._transport)
+    def analyses(self):
+        return AnalysisRegistry(self._transport)
 
     def help(self) -> HelpText:
         from .display import show_help
@@ -139,8 +139,8 @@ class Client:
         return show_help("Client")
 
 
-class ExperimentRegistry:
-    """Small internal-facing registry for experiment execution endpoints."""
+class AnalysisRegistry:
+    """Small internal-facing registry for analysis execution endpoints."""
 
     def __init__(self, transport: Transport):
         self._transport = transport
@@ -153,9 +153,9 @@ class ExperimentRegistry:
             return []
         return [item for item in payload if isinstance(item, dict)]
 
-    def get(self, experiment_id: str) -> dict[str, Any]:
-        payload = self._transport.get(f"/analyses/{experiment_id}")
+    def get(self, analysis_id: str) -> dict[str, Any]:
+        payload = self._transport.get(f"/analyses/{analysis_id}")
         return payload if isinstance(payload, dict) else {}
 
-    def delete(self, experiment_id: str) -> None:
-        self._transport.delete(f"/analyses/{experiment_id}")
+    def delete(self, analysis_id: str) -> None:
+        self._transport.delete(f"/analyses/{analysis_id}")

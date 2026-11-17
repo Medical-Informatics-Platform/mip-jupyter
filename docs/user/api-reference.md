@@ -94,5 +94,5 @@ dm.browse()
 ```python
 client.algorithms().list()
 client.algorithms().search("logistic")
-client.experiments().list()
+client.analyses().list()
 ```
