@@ -241,6 +241,5 @@ def build_analysis_payload(
                 "y": y_payload,
                 "parameters": parameters or {},
             },
-            "flags": None,
         },
     }

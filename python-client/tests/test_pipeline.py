@@ -61,6 +61,7 @@ class TestPipeline(unittest.TestCase):
             [step["name"] for step in analysis["preprocessing"]],
             ["missing_values_handler", "outlier_winsorizer"],
         )
+        self.assertNotIn("flags", analysis)
         self.assertNotIn("mipVersion", payload)
         self.assertEqual(result.raw, {"bins": [1, 2], "counts": [3, 4]})
 
