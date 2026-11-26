@@ -1,6 +1,6 @@
 [project]
 name = "mip-client"
-version = "0.2.1"
+version = "0.3.0"
 description = "Python client for MIP federated analysis through platform-backend"
 authors = [{ name = "Konstantinos Filippopolitis" }]
 readme = "README.md"
