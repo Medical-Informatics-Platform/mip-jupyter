@@ -4,7 +4,7 @@
 # hadolint global ignore=DL3006,DL3008,SC2016
 
 # Base images are pinned by digest; bump the digest to pick up base fixes.
-FROM python:3.12-slim-trixie@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b AS build
+FROM python:3.12-slim-trixie@sha256:191083cdf6c7bda8c76158983163ead5d5cf7b77cf3033e805bb0f5296f51b4b AS build
 COPY --from=ghcr.io/astral-sh/uv:0.13@sha256:32a7bb39b496babbd997b0a39a4d66c126bdaf5661b302bf6f06abda8deca6ff /uv /usr/local/bin/uv
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
@@ -48,12 +48,12 @@ ADD --checksum=sha256:70f6126de278bb854f7df50cbd748b58fd01a34a5e58f16976990064bb
 # nosemgrep: semgrep-rules.dockerfile.best-practice.missing-image-version
 FROM codex-acp-${TARGETARCH} AS codex-acp-tgz
 
-FROM python:3.12-slim-trixie@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b AS codex-acp
+FROM python:3.12-slim-trixie@sha256:191083cdf6c7bda8c76158983163ead5d5cf7b77cf3033e805bb0f5296f51b4b AS codex-acp
 RUN --mount=from=codex-acp-tgz,source=/acp.tgz,target=/tmp/acp.tgz \
     tar -xzf /tmp/acp.tgz -C /tmp package/bin/codex-acp \
     && install -m 755 /tmp/package/bin/codex-acp /usr/local/bin/codex-acp
 
-FROM python:3.12-slim-trixie@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b
+FROM python:3.12-slim-trixie@sha256:191083cdf6c7bda8c76158983163ead5d5cf7b77cf3033e805bb0f5296f51b4b
 
 ENV PYTHONUNBUFFERED=1 \
     PLATFORM_BACKEND_URL=http://platform-backend:8080/services \
@@ -68,10 +68,11 @@ ENV PYTHONUNBUFFERED=1 \
 
 # gid 100 (users) matches KubeSpawner fsGroup.
 # System pip/ensurepip are unused (the venv has its own pip) and lag on CVEs.
-# This digest already has apt 3.0.4 (CVE-2026-109518) and pcre2 10.46-1~deb13u3.
-# apt-get upgrade still installs zlib 1:1.3.dfsg+really1.3.1-1+deb13u1
-# (CVE-2026-85091, CVE-2026-76844, CVE-2026-27171). tini is not version-pinned
-# because Debian drops superseded versions. The profile line writes a literal $PATH.
+# This digest already has apt 3.0.4 (CVE-2026-109518), pcre2 10.46-1~deb13u3 and
+# zlib 1:1.3.dfsg+really1.3.1-1+deb13u1 (CVE-2026-85091, CVE-2026-76844, CVE-2026-27171).
+# apt-get upgrade installs libzstd1 1.5.7+dfsg-1+deb13u1 (CVE-2026-124851).
+# tini is not version-pinned because Debian drops superseded versions.
+# The profile line writes a literal $PATH.
 # nosemgrep: semgrep-rules.dockerfile.best-practice.avoid-apt-get-upgrade
 RUN apt-get update \
     && apt-get upgrade -y \
