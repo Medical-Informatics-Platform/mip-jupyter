@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # Pinned by digest so pulls stay reproducible and CHP/Node stay in the base;
 # bump the digest to pick up base fixes.
-FROM jupyterhub/jupyterhub:6.2.0-0@sha256:4700c2c99445a2e7594c57a0357c61069f11fb45cb5a23c870e903595d4d523a
+FROM jupyterhub/jupyterhub:6.2.0-1@sha256:57905557c2e52e5ecb13d4fbaacea19bc4d4afbb9fed4405c6bc1b582e32e110
 
 # 6.1.1-7 ships pebble 1.33.2 built with Go 1.27.3 (stdlib CVE-2026-111943 and
 # the 1.27.2 set), oauthlib 4.0.1, tornado 6.6, and follow-redirects 1.16.2.
